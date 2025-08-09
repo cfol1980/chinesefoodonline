@@ -1,8 +1,9 @@
-import { useRouter } from 'next/router';
+import { useParams } from 'next/navigation';
 
 export default function Supporter() {
-  const router = useRouter();
-  const { 'supporter-id': supporterId } = router.query; // Use string literal for hyphenated key
+  const params = useParams();
+  const supporterId = params['supporter-id']; // Access the dynamic parameter
+  if (!supporterId) return <div>Loading...</div>;
   return (
     <div className="bg-gray-100 min-h-screen p-4">
       <h1 className="text-2xl font-bold text-center mb-4">Supporter: {supporterId}</h1>
