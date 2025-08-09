@@ -1,14 +1,14 @@
-'use client'; // Explicitly mark as Client Component due to useEffect
+'use client';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { db } from '../../lib/firebase'; // Adjust path if needed
+import { db } from '../../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
 export default function Supporter() {
   const params = useParams();
-  console.log('Params received:', params); // Debug log
+  console.log('Params received:', params);
   const supporterId = params ? params['supporter-id'] : null;
-  console.log('Supporter ID extracted:', supporterId); // Debug log
+  console.log('Supporter ID extracted:', supporterId);
   const [isValid, setIsValid] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -16,17 +16,19 @@ export default function Supporter() {
     const checkSupporter = async () => {
       if (supporterId) {
         try {
-          const docRef = doc(db, 'supporters', supporterId);
+          const collectionRef = collection(db, 'supporters'); // Get collection reference
+          const docRef = doc(collectionRef, supporterId); // Reference specific document
           const docSnap = await getDoc(docRef);
-          console.log('Firestore result for', supporterId, ':', docSnap.exists()); // Debug log
+          console.log('Firestore result for', supporterId, ':', docSnap.exists());
           setIsValid(docSnap.exists());
         } catch (err) {
-          console.error('Firestore error:', err); // Debug log
+          console.error('Firestore error:', err);
           setError('Failed to load supporter data.');
         }
       }
     };
     checkSupporter();
+    // No need to add .catch here; it's handled in the try/catch
   }, [supporterId]);
 
   if (!supporterId) return <div>Loading...</div>;
