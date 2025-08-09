@@ -2,7 +2,8 @@ import { useParams } from 'next/navigation';
 
 export default function Supporter() {
   const params = useParams();
-  const supporterId = params['supporter-id']; // Access the dynamic parameter
+  console.log('Params in [supporter-id]/page.tsx:', params); // Debug log
+  const supporterId = params ? params['supporter-id'] : null;
   if (!supporterId) return <div>Loading...</div>;
   return (
     <div className="bg-gray-100 min-h-screen p-4">
