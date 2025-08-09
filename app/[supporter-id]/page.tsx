@@ -11,6 +11,7 @@ export default function Supporter() {
   console.log('Supporter ID extracted:', supporterId);
   const [isValid, setIsValid] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [name, setName] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [menu, setMenu] = useState<string[]>([]);
   const [recommendations, setRecommendations] = useState<string[]>([]);
@@ -25,6 +26,7 @@ export default function Supporter() {
           if (docSnap.exists()) {
             const data = docSnap.data();
             setIsValid(true);
+            setName(data.name || 'A Hidden Suporter');
             setDescription(data.description || 'A passionate supporter of Chinese cuisine.');
             setMenu(data.menu || ['Spring Rolls', 'Fried Rice', 'Sweet & Sour Chicken']);
             setRecommendations(data.recommendations || ['Peking Duck', 'Dumplings']);
@@ -44,11 +46,12 @@ export default function Supporter() {
 
   return (
     <div className="bg-gray-100 min-h-screen p-4">
-      <h1 className="text-2xl font-bold text-center mb-4">Supporter: {supporterId}</h1>
-      <img src="https://via.placeholder.com/150" alt={`${supporterId} logo`} className="mx-auto mb-4" />
+      <h1 className="text-2xl font-bold text-center mb-4">{name}</h1>
       <p className="text-lg mb-4">{description}</p>
+      <img src={`/${supporterId}/logo.jpg`} alt={`${supporterId} logo`} className="mx-auto mb-4" />
+      
       <div className="mb-4">
-        <h2 className="text-xl font-semibold">Menus</h2>
+        <h2 className="text-xl font-semibold">Menu</h2>
         <ul className="list-disc pl-5">
           {menu.map((item, index) => (
             <li key={index} className="text-md">{item}</li>
@@ -66,9 +69,8 @@ export default function Supporter() {
       <div>
         <h2 className="text-xl font-semibold">Pictures</h2>
         <div className="flex flex-wrap gap-4">
-          <img src="https://via.placeholder.com/200?text=Culture" alt="Culture" className="mb-2" />
-          <img src="https://via.placeholder.com/200?text=History" alt="History" className="mb-2" />
-          <img src="https://via.placeholder.com/200?text=Flavors" alt="Flavors" className="mb-2" />
+        <img src={`/${supporterId}/store.jpg`} alt="Store" className="mb-2" />
+          
         </div>
       </div>
     </div>
