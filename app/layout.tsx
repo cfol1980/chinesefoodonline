@@ -10,17 +10,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <nav className="bg-red-600 text-white p-4">
+        <nav className="bg-green-100 text-black p-4 shadow-md">
           <ul className="flex space-x-4 justify-center">
-            <li><Link href="/">Home</Link></li>
-            <li><Link href="/learn">Learn</Link></li>
-            <li><Link href="/community">Community</Link></li>
-            <li><Link href="/shop">Shop</Link></li>
-            <li><Link href="/login">Login</Link></li>
-            <li><Link href="/admin">Admin</Link></li>
+            <li><Link href="/" className="hover:text-green-700">Home</Link></li>
+            <li><Link href="/learn" className="hover:text-green-700">Learn</Link></li>
+            <li><Link href="/community" className="hover:text-green-700">Community</Link></li>
+            <li><Link href="/shop" className="hover:text-green-700">Shop</Link></li>
+            <li><Link href="/login" className="hover:text-green-700">Login</Link></li>
+            <li><Link href="/admin" className="hover:text-green-700">Admin</Link></li>
           </ul>
         </nav>
-        <main>{children}</main>
+        <main className="min-h-screen">{children}</main>
+        <footer className="bg-green-100 p-4 text-center text-gray-600">
+          <p>&copy; 2025 ChineseFoodOnline. All rights reserved.</p>
+        </footer>
       </body>
     </html>
   );

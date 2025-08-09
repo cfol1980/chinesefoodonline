@@ -26,7 +26,7 @@ export default function Supporter() {
           if (docSnap.exists()) {
             const data = docSnap.data();
             setIsValid(true);
-            setName(data.name || 'A Hidden Suporter');
+            setName(data.name || 'A Hidden Supporter');
             setDescription(data.description || 'A passionate supporter of Chinese cuisine.');
             setMenu(data.menu || ['Spring Rolls', 'Fried Rice', 'Sweet & Sour Chicken']);
             setRecommendations(data.recommendations || ['Peking Duck', 'Dumplings']);
@@ -46,7 +46,7 @@ export default function Supporter() {
 
   return (
     <div className="bg-gray-100 min-h-screen p-4">
-      <h1 className="text-2xl font-bold text-center mb-4">{name}</h1>
+      <h1 className="text-2xl font-bold text-center mb-4 bg-red-100 p-2 rounded">{name}</h1>
       <p className="text-lg mb-4">{description}</p>
       <img src={`/${supporterId}/logo.jpg`} alt={`${supporterId} logo`} className="mx-auto mb-4" />
       
@@ -69,8 +69,7 @@ export default function Supporter() {
       <div>
         <h2 className="text-xl font-semibold">Pictures</h2>
         <div className="flex flex-wrap gap-4">
-        <img src={`/${supporterId}/store.jpg`} alt="Store" className="mb-2" />
-          
+          <img src={`/${supporterId}/store.jpg`} alt="Store" className="mb-2" />
         </div>
       </div>
     </div>
