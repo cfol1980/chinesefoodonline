@@ -2,7 +2,7 @@
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { db } from '../../lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection } from 'firebase/firestore'; // Added collection
 
 export default function Supporter() {
   const params = useParams();
@@ -14,10 +14,10 @@ export default function Supporter() {
 
   useEffect(() => {
     const checkSupporter = async () => {
-      if (supporterId) {
+      if (supporterId && typeof supporterId === 'string') { // Type guard
         try {
           const collectionRef = collection(db, 'supporters'); // Get collection reference
-          const docRef = doc(collectionRef, supporterId); // Reference specific document
+          const docRef = doc(collectionRef, supporterId); // Use collectionRef with string ID
           const docSnap = await getDoc(docRef);
           console.log('Firestore result for', supporterId, ':', docSnap.exists());
           setIsValid(docSnap.exists());
@@ -28,7 +28,6 @@ export default function Supporter() {
       }
     };
     checkSupporter();
-    // No need to add .catch here; it's handled in the try/catch
   }, [supporterId]);
 
   if (!supporterId) return <div>Loading...</div>;
