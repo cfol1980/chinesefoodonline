@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { db } from '../../lib/firebase';
 import { doc, getDoc, collection } from 'firebase/firestore';
 
@@ -19,9 +19,46 @@ export default function Supporter() {
   const [menu, setMenu] = useState<{ name: string; image?: string }[]>([]);
   const [recommendations, setRecommendations] = useState<string[]>([]);
 
-  // For modal display
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [selectedName, setSelectedName] = useState<string>('');
+  // Modal state (index instead of just image)
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+
+  // Swipe tracking
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  const MIN_SWIPE_DISTANCE = 50; // pixels
+
+  const handlePrev = useCallback(() => {
+    if (selectedIndex === null) return;
+    setSelectedIndex((prev) => (prev! > 0 ? prev! - 1 : menu.length - 1));
+  }, [selectedIndex, menu.length]);
+
+  const handleNext = useCallback(() => {
+    if (selectedIndex === null) return;
+    setSelectedIndex((prev) => (prev! < menu.length - 1 ? prev! + 1 : 0));
+  }, [selectedIndex, menu.length]);
+
+  // Touch handlers
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    if (Math.abs(distance) > MIN_SWIPE_DISTANCE) {
+      if (distance > 0) {
+        handleNext();
+      } else {
+        handlePrev();
+      }
+    }
+  };
 
   useEffect(() => {
     const fetchSupporterData = async () => {
@@ -37,7 +74,7 @@ export default function Supporter() {
             setDescription(data.description || '');
             setPhone(data.phone || '');
             setLocation(data.location || '');
-            setStoreImage(data.storeImage || ''); // make sure Firestore has storeImage field
+            setStoreImage(data.storeImage || '');
             setMenu(data.menu || []);
             setRecommendations(data.recommendations || []);
           } else {
@@ -59,12 +96,13 @@ export default function Supporter() {
 
   return (
     <div className="bg-gray-100 min-h-screen p-4">
-       {/* Header */}
-       <h1 className="text-2xl font-bold text-center mb-2">{name}</h1>
+      {/* Header */}
+      <h1 className="text-2xl font-bold text-center mb-2">{name}</h1>
       <p className="text-center text-gray-600 mb-4">{description}</p>
       {location && <p className="text-center">📍 {location}</p>}
       {phone && <p className="text-center">📞 {phone}</p>}
 
+      {/* Menu list */}
       <div className="mb-6">
         <h2 className="text-xl font-semibold mb-2">Menu</h2>
         {menu.length > 0 ? (
@@ -73,10 +111,7 @@ export default function Supporter() {
               <li key={index} className="mb-2">
                 {item.image ? (
                   <button
-                    onClick={() => {
-                      setSelectedImage(item.image || '');
-                      setSelectedName(item.name);
-                    }}
+                    onClick={() => setSelectedIndex(index)}
                     className="text-blue-600 underline hover:text-blue-800"
                   >
                     {item.name}
@@ -92,6 +127,7 @@ export default function Supporter() {
         )}
       </div>
 
+      {/* Recommendations */}
       <div className="mb-6">
         <h2 className="text-xl font-semibold mb-2">Recommended Items</h2>
         {recommendations.length > 0 ? (
@@ -104,8 +140,9 @@ export default function Supporter() {
           <p>No recommendations yet.</p>
         )}
       </div>
-       {/* Store Pictures */}
-       <div className="mt-8">
+
+      {/* Store Pictures */}
+      <div className="mt-8">
         <h2 className="text-xl font-semibold mb-3">Pictures</h2>
         <div className="flex flex-wrap gap-4">
           <img
@@ -116,19 +153,43 @@ export default function Supporter() {
         </div>
       </div>
 
-      {/* Image Modal */}
-      {selectedImage && (
+      {/* Image Modal with swipe */}
+      {selectedIndex !== null && menu[selectedIndex]?.image && (
         <div
-          onClick={() => setSelectedImage(null)}
-          className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedIndex(null)}
+          className="fixed inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center z-50 p-4"
         >
-          <div className="relative max-w-full max-h-full">
+          <div
+            className="relative max-w-full max-h-full flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+          >
             <img
-              src={selectedImage}
-              alt={selectedName}
-              className="max-w-full max-h-[90vh] object-contain rounded"
+              src={menu[selectedIndex].image}
+              alt={menu[selectedIndex].name}
+              className="max-w-full max-h-[80vh] object-contain rounded"
             />
-            <p className="text-center text-white mt-2">{selectedName}</p>
+            <p className="text-center text-white mt-2">{menu[selectedIndex].name}</p>
+
+            {/* Navigation buttons */}
+            <div className="absolute inset-y-0 left-0 flex items-center">
+              <button
+                onClick={handlePrev}
+                className="text-white text-3xl px-4 focus:outline-none"
+              >
+                ‹
+              </button>
+            </div>
+            <div className="absolute inset-y-0 right-0 flex items-center">
+              <button
+                onClick={handleNext}
+                className="text-white text-3xl px-4 focus:outline-none"
+              >
+                ›
+              </button>
+            </div>
           </div>
         </div>
       )}
