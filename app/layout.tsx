@@ -20,7 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <li><Link href="/admin" className="hover:text-green-700">Admin</Link></li>
           </ul>
         </nav>
-        <main className="min-h-screen bg-white text-black dark:bg-green-950 dark:text-white">{children}</main>
+        <main className="min-h-screen bg-white text-black dark:bg-green-950 dark:!text-white">{children}</main>
         <footer className="bg-green-100 p-4 text-center text-gray-600">
           <p>&copy; 2025 ChineseFoodOnline.com All rights reserved.</p>
         </footer>
