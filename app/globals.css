@@ -2,26 +2,51 @@
 @tailwind components;
 @tailwind utilities;
 
+/* --------------------------
+   Light-only color variables
+   -------------------------- */
 :root {
-  --foreground-rgb: 0, 0, 0; /* Black text */
-  --background-start-rgb: 200, 230, 201; /* Lighter green, darker than gray */
-  --background-end-rgb: 240, 250, 241; /* Very light green */
+  --foreground-rgb: 0, 0, 0;            /* black text */
+  --background-start-rgb: 200, 230, 201;/* soft light green */
+  --background-end-rgb: 240, 250, 241;  /* very light green */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255; /* White text */
-    --background-start-rgb: 0, 50, 0; /* Dark green */
-    --background-end-rgb: 0, 100, 0; /* Medium dark green */
-  }
+/* --------------------------
+   Global page / body styles
+   -------------------------- */
+html, body {
+  height: 100%;
 }
 
 body {
-  /*color: rgb(var(--foreground-rgb));*/
+  margin: 0;
+  color: rgb(var(--foreground-rgb)); /* enforces light-mode text color site-wide */
+  /* subtle vertical gradient over a base color */
   background: linear-gradient(
       to bottom,
       transparent,
       rgb(var(--background-end-rgb))
     )
     rgb(var(--background-start-rgb));
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Optional: ensure that the top-level layout doesn't inherit unexpected styles */
+#__next, main {
+  min-height: 100%;
+}
+
+/* Small utility to force solid content background if needed */
+/* Use `.content-surface` on main content containers to avoid the body gradient showing through */
+.content-surface {
+  background-color: rgb(255, 255, 255); /* white content surface for maximum contrast */
+  color: rgb(var(--foreground-rgb));
+}
+
+/* Make sure focus outlines are visible for accessibility */
+:focus {
+  outline: 3px solid rgba(0, 0, 0, 0.12);
+  outline-offset: 2px;
 }
