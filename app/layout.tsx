@@ -1,6 +1,8 @@
 import './globals.css';
 import Link from 'next/link';
 
+/*import ModalWrapper from './_components/ModalWrapper';*/
+
 export const metadata = {
   title: 'ChineseFoodOnline',
   description: 'A hub for Chinese food enthusiasts in the U.S.',

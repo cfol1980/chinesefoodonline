@@ -1,120 +1,111 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../../lib/firebase";
-import Image from "next/image";
-
-interface MenuItem {
-  name: string;
-  image?: string;
-}
+import { useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { db } from '../../lib/firebase';
+import { doc, getDoc, collection } from 'firebase/firestore';
 
 export default function Supporter() {
   const params = useParams();
-  const supporterId = params ? params["supporter-id"] : null;
+  const supporterId = params ? params['supporter-id'] : null;
+
   const [isValid, setIsValid] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [name, setName] = useState<string>("");
-  const [description, setDescription] = useState<string>("");
-  const [menu, setMenu] = useState<MenuItem[]>([]);
+  const [name, setName] = useState<string>('');
+  const [description, setDescription] = useState<string>('');
+  const [phone, setPhone] = useState<string>('');
+  const [location, setLocation] = useState<string>('');
+  const [storeImage, setStoreImage] = useState<string>('');
+  const [menu, setMenu] = useState<{ name: string; image?: string }[]>([]);
   const [recommendations, setRecommendations] = useState<string[]>([]);
-  const [location, setLocation] = useState<string>("");
-  const [phone, setPhone] = useState<string>("");
+
+  // For modal display
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedName, setSelectedName] = useState<string>('');
 
   useEffect(() => {
-    const fetchSupporter = async () => {
-      if (supporterId && typeof supporterId === "string") {
+    const fetchSupporterData = async () => {
+      if (supporterId && typeof supporterId === 'string') {
         try {
-          const docRef = doc(db, "supporters", supporterId);
+          const docRef = doc(collection(db, 'supporters'), supporterId);
           const docSnap = await getDoc(docRef);
 
           if (docSnap.exists()) {
             const data = docSnap.data();
             setIsValid(true);
-            setName(data.name || "A Hidden Supporter");
-            setDescription(
-              data.description ||
-                "A passionate supporter of Chinese cuisine."
-            );
-            setMenu(
-              data.menu || [
-                { name: "Spring Rolls" },
-                { name: "Fried Rice" },
-                { name: "Sweet & Sour Chicken" },
-              ]
-            );
-            setRecommendations(
-              data.recommendations || ["Peking Duck", "Dumplings"]
-            );
-            setLocation(data.location || "");
-            setPhone(data.phone || "");
+            setName(data.name || 'A Hidden Supporter');
+            setDescription(data.description || '');
+            setPhone(data.phone || '');
+            setLocation(data.location || '');
+            setStoreImage(data.storeImage || ''); // make sure Firestore has storeImage field
+            setMenu(data.menu || []);
+            setRecommendations(data.recommendations || []);
           } else {
-            setError("Supporter not found.");
+            setError('Supporter not found.');
           }
         } catch (err) {
-          console.error("Firestore error:", err);
-          setError("Failed to load supporter data.");
+          console.error('Firestore error:', err);
+          setError('Failed to load supporter data.');
         }
       }
     };
-    fetchSupporter();
+
+    fetchSupporterData();
   }, [supporterId]);
 
-  if (!supporterId) return <div className="p-4">Loading...</div>;
-  if (error) return <div className="p-4">Error: {error}</div>;
-  if (!isValid) return <div className="p-4">Loading...</div>;
+  if (!supporterId) return <div>Loading...</div>;
+  if (error) return <div className="p-4 text-red-600">Error: {error}</div>;
+  if (!isValid) return <div>Loading...</div>;
 
   return (
     <div className="bg-gray-100 min-h-screen p-4">
-      {/* Header */}
-      <h1 className="text-2xl font-bold text-center mb-2">{name}</h1>
+       {/* Header */}
+       <h1 className="text-2xl font-bold text-center mb-2">{name}</h1>
       <p className="text-center text-gray-600 mb-4">{description}</p>
       {location && <p className="text-center">📍 {location}</p>}
       {phone && <p className="text-center">📞 {phone}</p>}
 
-      {/* Menu Section */}
-      <div className="mt-6">
-        <h2 className="text-xl font-semibold mb-3">Menu</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-          {menu.map((item, index) => (
-            <div
-              key={index}
-              className="bg-white shadow-md rounded-lg overflow-hidden"
-            >
-              {item.image && (
-                <div className="relative w-full h-48">
-                  <Image
-                    src={item.image}
-                    alt={item.name}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-              )}
-              <div className="p-4">
-                <h3 className="text-lg font-medium">{item.name}</h3>
-              </div>
-            </div>
-          ))}
-        </div>
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold mb-2">Menu</h2>
+        {menu.length > 0 ? (
+          <ul className="list-disc pl-5">
+            {menu.map((item, index) => (
+              <li key={index} className="mb-2">
+                {item.image ? (
+                  <button
+                    onClick={() => {
+                      setSelectedImage(item.image || '');
+                      setSelectedName(item.name);
+                    }}
+                    className="text-blue-600 underline hover:text-blue-800"
+                  >
+                    {item.name}
+                  </button>
+                ) : (
+                  <span>{item.name}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No menu items available.</p>
+        )}
       </div>
 
-      {/* Recommendations Section */}
-      <div className="mt-8">
-        <h2 className="text-xl font-semibold mb-3">Recommended Items</h2>
-        <ul className="list-disc pl-5">
-          {recommendations.map((item, index) => (
-            <li key={index} className="text-md">
-              {item}
-            </li>
-          ))}
-        </ul>
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold mb-2">Recommended Items</h2>
+        {recommendations.length > 0 ? (
+          <ul className="list-disc pl-5">
+            {recommendations.map((item, index) => (
+              <li key={index} className="text-md">{item}</li>
+            ))}
+          </ul>
+        ) : (
+          <p>No recommendations yet.</p>
+        )}
       </div>
-
-      {/* Store Pictures */}
-      <div className="mt-8">
+       {/* Store Pictures */}
+       <div className="mt-8">
         <h2 className="text-xl font-semibold mb-3">Pictures</h2>
         <div className="flex flex-wrap gap-4">
           <img
@@ -124,6 +115,23 @@ export default function Supporter() {
           />
         </div>
       </div>
+
+      {/* Image Modal */}
+      {selectedImage && (
+        <div
+          onClick={() => setSelectedImage(null)}
+          className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4"
+        >
+          <div className="relative max-w-full max-h-full">
+            <img
+              src={selectedImage}
+              alt={selectedName}
+              className="max-w-full max-h-[90vh] object-contain rounded"
+            />
+            <p className="text-center text-white mt-2">{selectedName}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
