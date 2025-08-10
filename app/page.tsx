@@ -16,7 +16,7 @@ export default function Home() {
       <section className="p-6 bg-green-50">
         <h2 className="text-2xl font-semibold text-center mb-4">Our Supporters</h2>
         <div className="flex flex-wrap justify-center gap-6">
-          <Link href="/e-noodle" className="block">
+          <Link href="/enoodle" className="block">
             <Image
               src="/enoodle_logo.jpg"
               alt="E-Noodle Logo"
@@ -26,7 +26,7 @@ export default function Home() {
               className="rounded-lg shadow hover:scale-105 transition-transform"
             />
           </Link>
-          <Link href="/master-pancakes" className="block">
+          <Link href="/masterpancakes" className="block">
             <Image
               src="/masterPancakes_logo.jpg"
               alt="Master Pancakes Logo"

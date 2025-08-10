@@ -3,12 +3,12 @@ import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { db } from '../../lib/firebase';
 import { doc, getDoc, collection } from 'firebase/firestore';
+import Image from 'next/image';
 
 export default function Supporter() {
   const params = useParams();
-  console.log('Params received:', params);
   const supporterId = params ? params['supporter-id'] : null;
-  console.log('Supporter ID extracted:', supporterId);
+
   const [isValid, setIsValid] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState<string>('');
@@ -22,7 +22,7 @@ export default function Supporter() {
         try {
           const docRef = doc(collection(db, 'supporters'), supporterId);
           const docSnap = await getDoc(docRef);
-          console.log('Firestore result for', supporterId, ':', docSnap.exists());
+
           if (docSnap.exists()) {
             const data = docSnap.data();
             setIsValid(true);
@@ -46,10 +46,23 @@ export default function Supporter() {
 
   return (
     <div className="bg-gray-100 min-h-screen p-4">
-      <h1 className="text-2xl font-bold text-center mb-4 bg-red-100 p-2 rounded">{name}</h1>
+      <h1 className="text-2xl font-bold text-center mb-4 bg-red-100 p-2 rounded">
+        {name}
+      </h1>
       <p className="text-lg mb-4">{description}</p>
-      <img src={`/${supporterId}/logo.jpg`} alt={`${supporterId} logo`} className="mx-auto mb-4" />
-      
+
+      {/* Optimized Logo */}
+      <div className="flex justify-center mb-4">
+        <Image
+          src={`/${supporterId}/logo.jpg`}
+          alt={`${supporterId} logo`}
+          width={300}
+          height={150}
+          priority
+          className="rounded-lg shadow"
+        />
+      </div>
+
       <div className="mb-4">
         <h2 className="text-xl font-semibold">Menu</h2>
         <ul className="list-disc pl-5">
@@ -58,6 +71,7 @@ export default function Supporter() {
           ))}
         </ul>
       </div>
+
       <div className="mb-4">
         <h2 className="text-xl font-semibold">Recommended Items</h2>
         <ul className="list-disc pl-5">
@@ -66,10 +80,18 @@ export default function Supporter() {
           ))}
         </ul>
       </div>
+
+      {/* Store Pictures */}
       <div>
         <h2 className="text-xl font-semibold">Pictures</h2>
         <div className="flex flex-wrap gap-4">
-          <img src={`/${supporterId}/store.jpg`} alt="Store" className="mb-2" />
+          <Image
+            src={`/${supporterId}/store.jpg`}
+            alt={`${name} store`}
+            width={600}
+            height={400}
+            className="rounded-lg"
+          />
         </div>
       </div>
     </div>
