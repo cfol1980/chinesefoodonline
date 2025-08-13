@@ -42,7 +42,7 @@ export default function Home() {
             Welcome to ChineseFoodOnline
           </h1>
           <p className="text-lg text-gray-200">
-            Introducing authentic Chinese cuisine to America — 
+            Introducing authentic Chinese cuisine to America —
             celebrating its history, preserving its culture, and sharing its diverse flavors.
           </p>
         </div>
@@ -93,12 +93,12 @@ export default function Home() {
       </section>
 
       {/* Explore Cuisine Section */}
-     
       <main className="p-6">
         <h2 className="text-2xl font-semibold text-center mb-6">
           Explore Chinese Cuisine
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          {/* History */}
           <Link href="/explore/history" className="block">
             <div className="bg-white shadow rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
               <Image
@@ -116,23 +116,8 @@ export default function Home() {
               </div>
             </div>
           </Link>
-          <Link href="/explore/regional" className="block">
-            <div className="bg-white shadow rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
-              <Image
-                src="/explore_regional.png"
-                alt="Regional Specialties"
-                width={400}
-                height={250}
-                className="w-full h-auto"
-              />
-              <div className="p-4">
-                <h3 className="text-lg font-bold">Regional Specialties</h3>
-                <p className="text-sm text-gray-600">
-                  Taste the variety — from fiery Sichuan to delicate Cantonese, each region has its own story.
-                </p>
-              </div>
-            </div>
-          </Link>
+
+          {/* American Chinese */}
           <Link href="/explore/american-chinese" className="block">
             <div className="bg-white shadow rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
               <Image
@@ -151,7 +136,24 @@ export default function Home() {
             </div>
           </Link>
 
-          
+          {/* Regional Specialties */}
+          <Link href="/explore/regional" className="block">
+            <div className="bg-white shadow rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
+              <Image
+                src="/explore_regional.png"
+                alt="Regional Specialties"
+                width={400}
+                height={250}
+                className="w-full h-auto"
+              />
+              <div className="p-4">
+                <h3 className="text-lg font-bold">Regional Specialties</h3>
+                <p className="text-sm text-gray-600">
+                  Taste the variety — from fiery Sichuan to delicate Cantonese, each region has its own story.
+                </p>
+              </div>
+            </div>
+          </Link>
         </div>
       </main>
 
