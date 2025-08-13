@@ -117,25 +117,6 @@ export default function Home() {
             </div>
           </Link>
 
-          {/* American Chinese */}
-          <Link href="/explore/american-chinese" className="block">
-            <div className="bg-white shadow rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
-              <Image
-                src="/explore_american.png"
-                alt="American Chinese Food"
-                width={400}
-                height={250}
-                className="w-full h-auto"
-              />
-              <div className="p-4">
-                <h3 className="text-lg font-bold">American Chinese Food</h3>
-                <p className="text-sm text-gray-600">
-                  From chop suey to General Tso’s chicken — explore how Chinese food transformed in America.
-                </p>
-              </div>
-            </div>
-          </Link>
-
           {/* Regional Specialties */}
           <Link href="/explore/regional" className="block">
             <div className="bg-white shadow rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
@@ -150,6 +131,25 @@ export default function Home() {
                 <h3 className="text-lg font-bold">Regional Specialties</h3>
                 <p className="text-sm text-gray-600">
                   Taste the variety — from fiery Sichuan to delicate Cantonese, each region has its own story.
+                </p>
+              </div>
+            </div>
+          </Link>
+
+          {/* American Chinese */}
+          <Link href="/explore/american-chinese" className="block">
+            <div className="bg-white shadow rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
+              <Image
+                src="/explore_american.png"
+                alt="American Chinese Food"
+                width={400}
+                height={250}
+                className="w-full h-auto"
+              />
+              <div className="p-4">
+                <h3 className="text-lg font-bold">American Chinese Food</h3>
+                <p className="text-sm text-gray-600">
+                  From chop suey to General Tso’s chicken — explore how Chinese food transformed in America.
                 </p>
               </div>
             </div>
