@@ -1,89 +1,92 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { auth, db } from "../../lib/firebase";
-import { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { getFirestore, doc, getDoc } from "firebase/firestore";
+import { app } from "@/lib/firebase"; // <-- your firebase config
 
 export default function AdminPage() {
-  const [user, setUser] = useState<User | null>(null);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState<string | null>(null);
-  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+
+  // Google sign-in
+  const loginWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (err: any) {
+      console.error(err);
+      setError("Login failed. Try again.");
+    }
+  };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (currentUser) {
-        setUser(currentUser);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        setUser(firebaseUser);
 
-        // Fetch role from Firestore
-        const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-        if (userDoc.exists()) {
-          const data = userDoc.data();
-          setRole(data.role);
-          if (data.role !== "admin") {
-            router.push("/"); // redirect if not admin
+        try {
+          const ref = doc(db, "users", firebaseUser.uid);
+          const snap = await getDoc(ref);
+
+          if (snap.exists()) {
+            const data = snap.data();
+            setRole(data.role || null);
+          } else {
+            setRole(null);
+            setError("No user record found in Firestore.");
           }
-        } else {
-          router.push("/"); // no role found
+        } catch (err) {
+          console.error(err);
+          setError("Error fetching role from Firestore.");
         }
       } else {
         setUser(null);
         setRole(null);
       }
+      setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [router]);
+  }, []);
 
-  const handleLogin = async () => {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
-  };
-
-  const handleLogout = async () => {
-    await signOut(auth);
-  };
+  if (loading) {
+    return <div className="p-6 text-center">Loading...</div>;
+  }
 
   if (!user) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen">
-        <h1 className="text-2xl font-bold mb-4">Admin Login</h1>
+      <div className="p-6 text-center">
+        <h1 className="text-xl font-bold mb-4">Admin Login</h1>
         <button
-          onClick={handleLogin}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          onClick={loginWithGoogle}
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
         >
           Sign in with Google
         </button>
+        {error && <p className="text-red-500 mt-2">{error}</p>}
       </div>
     );
   }
 
   if (role !== "admin") {
-    return null; // loading or redirecting
+    return (
+      <div className="p-6 text-center text-red-600">
+        You are not authorized to view this page.
+      </div>
+    );
   }
 
   return (
     <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-        <button
-          onClick={handleLogout}
-          className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
-        >
-          Logout
-        </button>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Link href="/admin/supporters" className="p-4 bg-green-200 rounded shadow hover:bg-green-300">
-          Manage Supporters
-        </Link>
-        <Link href="/admin/menu" className="p-4 bg-yellow-200 rounded shadow hover:bg-yellow-300">
-          Manage Menus
-        </Link>
-      </div>
+      <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
+      <p>Welcome, {user.email}</p>
+      {/* Your admin tools here */}
     </div>
   );
 }
