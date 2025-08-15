@@ -1,6 +1,6 @@
 import './globals.css';
 import Link from 'next/link';
-
+import { GoogleAnalytics } from '@next/third-parties/google';
 /*import ModalWrapper from './_components/ModalWrapper';*/
 
 export const metadata = {
@@ -26,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <footer className="bg-green-100 p-4 text-center text-gray-600">
           <p>&copy; 2025 ChineseFoodOnline.com All rights reserved.</p>
         </footer>
+        <GoogleAnalytics gaId="G-J3TN6EKMY7" /> {/* Add this line */}
       </body>
     </html>
   );
