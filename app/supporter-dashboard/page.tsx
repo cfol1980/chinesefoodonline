@@ -82,6 +82,13 @@ export default function SupporterDashboard() {
           >
             Edit Business Details
           </Link>
+          <Link
+  href={`/supporter-dashboard/add-menu`}
+  className="inline-block bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 mt-4"
+>
+  + Add Menu Item
+</Link>
+
         </div>
       ) : (
         <p>No supporter record associated with this account.</p>
