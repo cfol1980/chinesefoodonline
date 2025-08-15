@@ -91,7 +91,7 @@ export default function AccountPage() {
 
       {role === "supporter" && (
         <Link
-          href={`/admin/supporters/${user.uid}`} // or a custom page just for the business owner
+        href={`/supporter-dashboard`} // or a custom page just for the business owner
           className="inline-block bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 mb-4"
         >
           Manage My Supporter Profile
