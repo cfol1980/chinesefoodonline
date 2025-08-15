@@ -19,7 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <li><Link href="/community" className="hover:text-green-700">Community</Link></li>
             
         
-            <li><Link href="/admin" className="hover:text-green-700">Admin</Link></li>
+            <li><Link href="/account" className="hover:text-green-700">Account</Link></li>
           </ul>
         </nav>
         <main className="min-h-screen">{children}</main>
