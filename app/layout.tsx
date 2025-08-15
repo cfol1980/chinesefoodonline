@@ -1,6 +1,6 @@
 import './globals.css';
 import Link from 'next/link';
-
+import { GoogleAnalytics } from '@next/third-parties/google';
 /*import ModalWrapper from './_components/ModalWrapper';*/
 
 export const metadata = {
@@ -19,13 +19,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <li><Link href="/community" className="hover:text-green-700">Community</Link></li>
             
         
-            <li><Link href="/admin" className="hover:text-green-700">Admin</Link></li>
+            <li><Link href="/account" className="hover:text-green-700">Account</Link></li>
           </ul>
         </nav>
         <main className="min-h-screen">{children}</main>
         <footer className="bg-green-100 p-4 text-center text-gray-600">
           <p>&copy; 2025 ChineseFoodOnline.com All rights reserved.</p>
         </footer>
+        <GoogleAnalytics gaId="G-J3TN6EKMY7" /> {/* Add this line */}
       </body>
     </html>
   );
