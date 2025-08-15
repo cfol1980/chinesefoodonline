@@ -9,6 +9,7 @@ import {
   onAuthStateChanged,
 } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
+import { setDoc } from 'firebase/firestore';
 import Link from "next/link";
 
 export default function AccountPage() {
@@ -35,7 +36,12 @@ export default function AccountPage() {
         if (snap.exists()) {
           setRole(snap.data().role);
         } else {
-          // Default role if no doc found
+          // create doc for first-time user
+   await setDoc(doc(db, "users", firebaseUser.uid), {
+    email: firebaseUser.email,
+    role: "user"
+   });
+            // Default role if no doc found
           setRole("user");
         }
         setLoading(false);
