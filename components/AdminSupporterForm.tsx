@@ -3,18 +3,20 @@
 import { useState } from "react";
 
 interface Props {
-  onSubmit: (name: string, description: string, logoFile?: File) => void;
+  onSubmit: (slug: string, name: string, description: string, logoFile?: File) => void;
 }
 
 export default function AdminSupporterForm({ onSubmit }: Props) {
+  const [slug, setSlug] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [logoFile, setLogoFile] = useState<File | undefined>();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name) return;
-    onSubmit(name, description, logoFile);
+    if (!slug || !name) return;
+    onSubmit(slug, name, description, logoFile);
+    setSlug("");
     setName("");
     setDescription("");
     setLogoFile(undefined);
@@ -23,7 +25,19 @@ export default function AdminSupporterForm({ onSubmit }: Props) {
   return (
     <form onSubmit={handleSubmit} className="bg-gray-100 p-4 rounded shadow space-y-4">
       <div>
-        <label className="block text-sm font-semibold mb-1">Supporter Name</label>
+        <label className="block text-sm font-semibold mb-1">Slug (URL id)</label>
+        <input
+          type="text"
+          className="w-full border px-2 py-1 rounded"
+          value={slug}
+          onChange={(e) => setSlug(e.target.value)}
+          placeholder="enoodle"
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold mb-1">Business Name</label>
         <input
           type="text"
           className="w-full border px-2 py-1 rounded"

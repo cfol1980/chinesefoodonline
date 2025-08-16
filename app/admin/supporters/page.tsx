@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { auth, db, storage } from "../../../lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { collection, getDocs, addDoc, deleteDoc, doc } from "firebase/firestore";
+import { collection, getDocs, addDoc, deleteDoc} from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import AdminSupporterForm from "../../../components/AdminSupporterForm";
 import { useRouter } from "next/navigation";
+import { setDoc, doc } from "firebase/firestore";
+
 
 interface Supporter {
   id: string;
@@ -44,23 +46,29 @@ export default function SupportersAdminPage() {
     if (userIsAdmin) fetchSupporters();
   }, [userIsAdmin]);
 
-  const handleAddSupporter = async (name: string, description: string, logoFile?: File) => {
+  const handleAddSupporter = async (
+    slug: string,
+    name: string,
+    description: string,
+    logoFile?: File
+  ) => {
     let logoUrl = "";
-
+  
     if (logoFile) {
       const storageRef = ref(storage, `logos/${Date.now()}_${logoFile.name}`);
       await uploadBytes(storageRef, logoFile);
       logoUrl = await getDownloadURL(storageRef);
     }
-
-    await addDoc(collection(db, "supporters"), {
+  
+    await setDoc(doc(db, "supporters", slug), {
       name,
       description,
       logo: logoUrl,
     });
-
+  
     fetchSupporters();
   };
+  
 
   const handleDeleteSupporter = async (id: string) => {
     await deleteDoc(doc(db, "supporters", id));
