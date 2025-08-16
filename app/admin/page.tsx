@@ -87,7 +87,7 @@ export default function AdminPage() {
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
       <p>Welcome, {user.email}</p>
-      <div>
+      <p></p>
       <Link href="/admin/supporters" className="p-4 bg-green-200 rounded shadow hover:bg-green-300">
     Manage Supporters
   </Link>
@@ -95,6 +95,6 @@ export default function AdminPage() {
     Manage Users
   </Link>
   </div>
-    </div>
+    
   );
 }
