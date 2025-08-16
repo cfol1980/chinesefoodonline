@@ -87,12 +87,14 @@ export default function AdminPage() {
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
       <p>Welcome, {user.email}</p>
+      <div>
       <Link href="/admin/supporters" className="p-4 bg-green-200 rounded shadow hover:bg-green-300">
     Manage Supporters
   </Link>
   <Link href="/admin/users" className="p-4 bg-yellow-200 rounded shadow hover:bg-yellow-300">
     Manage Users
   </Link>
+  </div>
     </div>
   );
 }
