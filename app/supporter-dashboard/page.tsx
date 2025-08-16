@@ -3,14 +3,20 @@
 import { useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, arrayRemove } from "firebase/firestore";
 import Link from "next/link";
+
+interface MenuItem {
+  name: string;
+  image?: string;
+}
 
 interface SupporterData {
   name?: string;
   description?: string;
   phone?: string;
   location?: string;
+  menu?: MenuItem[];
 }
 
 export default function SupporterDashboard() {
@@ -32,7 +38,6 @@ export default function SupporterDashboard() {
 
       setUser(firebaseUser);
 
-      // 1) Fetch user role + ownedSupporterId
       const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
       if (userDoc.exists()) {
         const data = userDoc.data();
@@ -42,8 +47,9 @@ export default function SupporterDashboard() {
         if (r === "supporter" && data.ownedSupporterId) {
           setSupporterSlug(data.ownedSupporterId);
 
-          // 2) Fetch supporter info using the slug
-          const supporterDoc = await getDoc(doc(db, "supporters", data.ownedSupporterId));
+          const supporterDoc = await getDoc(
+            doc(db, "supporters", data.ownedSupporterId)
+          );
           if (supporterDoc.exists()) {
             setSupporterData(supporterDoc.data() as SupporterData);
           }
@@ -54,6 +60,21 @@ export default function SupporterDashboard() {
 
     return () => unsub();
   }, []);
+
+  const handleDelete = async (itemToDelete: MenuItem) => {
+    try {
+      await updateDoc(doc(db, "supporters", supporterSlug!), {
+        menu: arrayRemove(itemToDelete),
+      });
+      alert("Deleted!");
+
+      // Quick refresh:
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete.");
+    }
+  };
 
   if (loading) return <div className="p-4">Loading...</div>;
   if (!user) return <div className="p-4">Please log in to continue.</div>;
@@ -71,24 +92,53 @@ export default function SupporterDashboard() {
 
       {supporterData ? (
         <div className="bg-white p-4 rounded shadow">
-          <p><strong>Name:</strong> {supporterData.name}</p>
-          <p><strong>Description:</strong> {supporterData.description}</p>
-          <p><strong>Phone:</strong> {supporterData.phone}</p>
-          <p><strong>Location:</strong> {supporterData.location}</p>
+          <p>
+            <strong>Name:</strong> {supporterData.name}
+          </p>
+          <p>
+            <strong>Description:</strong> {supporterData.description}
+          </p>
+          <p>
+            <strong>Phone:</strong> {supporterData.phone}
+          </p>
+          <p>
+            <strong>Location:</strong> {supporterData.location}
+          </p>
 
-          <Link 
-            href={`/supporter-dashboard/edit`} 
+          <Link
+            href={`/supporter-dashboard/edit`}
             className="mt-4 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
           >
             Edit Business Details
           </Link>
-          <Link
-  href={`/supporter-dashboard/add-menu`}
-  className="inline-block bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 mt-4"
->
-  + Add Menu Item
-</Link>
 
+          <Link
+            href={`/supporter-dashboard/add-menu`}
+            className="inline-block bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 mt-4"
+          >
+            + Add Menu Item
+          </Link>
+
+          {/* List of menu items with delete buttons */}
+          {supporterData.menu && supporterData.menu.length > 0 && (
+            <div className="mt-6">
+              <h2 className="text-xl font-semibold mb-2">Menu Items</h2>
+              {supporterData.menu.map((item, index) => (
+                <div
+                  key={index}
+                  className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded"
+                >
+                  <span>{item.name}</span>
+                  <button
+                    onClick={() => handleDelete(item)}
+                    className="text-red-600 hover:text-red-800"
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       ) : (
         <p>No supporter record associated with this account.</p>
