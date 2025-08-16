@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore, doc, getDoc } from "firebase/firestore";
 import { app } from "@/lib/firebase"; // <-- your firebase config
+import Link from "next/link";
 
 export default function AdminPage() {
   const auth = getAuth(app);
@@ -86,7 +87,12 @@ export default function AdminPage() {
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
       <p>Welcome, {user.email}</p>
-      {/* Your admin tools here */}
+      <Link href="/admin/supporters" className="p-4 bg-green-200 rounded shadow hover:bg-green-300">
+    Manage Supporters
+  </Link>
+  <Link href="/admin/users" className="p-4 bg-yellow-200 rounded shadow hover:bg-yellow-300">
+    Manage Users
+  </Link>
     </div>
   );
 }
