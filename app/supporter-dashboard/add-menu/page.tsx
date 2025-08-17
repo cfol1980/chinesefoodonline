@@ -17,7 +17,6 @@ export default function AddMenuItemPage() {
 
   const router = useRouter();
 
-  // Load user and slug
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (!firebaseUser) return;
@@ -40,18 +39,16 @@ export default function AddMenuItemPage() {
     if (!slug || !file) return;
 
     try {
-      // Upload file to storage
-      const storageRef = ref(
-        storage,
-        `menu/${slug}/${Date.now()}-${file.name}`
-      );
+      const timestamp = Date.now();
+      const storagePath = `menu/${slug}/${timestamp}-${file.name}`;
+      const storageRef = ref(storage, storagePath);
+
       await uploadBytes(storageRef, file);
       const imageUrl = await getDownloadURL(storageRef);
 
-      // Push to Firestore array
       const supporterRef = doc(db, "supporters", slug);
       await updateDoc(supporterRef, {
-        menu: arrayUnion({ name: itemName, image: imageUrl }),
+        menu: arrayUnion({ name: itemName, image: imageUrl, path: storagePath }),
       });
 
       alert("Menu item added!");
@@ -62,12 +59,9 @@ export default function AddMenuItemPage() {
     }
   };
 
+  // ...
   if (role !== "supporter") {
-    return (
-      <div className="p-4 text-red-600">
-        Access denied or loading...
-      </div>
-    );
+    return <div className="p-4 text-red-600">Access denied or loading...</div>;
   }
 
   return (

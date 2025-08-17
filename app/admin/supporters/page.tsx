@@ -3,10 +3,13 @@
 import { useEffect, useState } from "react";
 import { auth, db, storage } from "../../../lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { collection, getDocs, addDoc, deleteDoc, doc } from "firebase/firestore";
+import { collection, getDocs, addDoc, deleteDoc} from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import AdminSupporterForm from "../../../components/AdminSupporterForm";
 import { useRouter } from "next/navigation";
+import { setDoc, doc } from "firebase/firestore";
+import Link from "next/link";
+
 
 interface Supporter {
   id: string;
@@ -44,23 +47,34 @@ export default function SupportersAdminPage() {
     if (userIsAdmin) fetchSupporters();
   }, [userIsAdmin]);
 
-  const handleAddSupporter = async (name: string, description: string, logoFile?: File) => {
+  const handleAddSupporter = async (
+    slug: string,
+    name: string,
+    description: string,
+    logoFile?: File
+  ) => {
     let logoUrl = "";
-
+    let logoPath = "";
+  
     if (logoFile) {
-      const storageRef = ref(storage, `logos/${Date.now()}_${logoFile.name}`);
+      const storagePath = `logos/${Date.now()}_${logoFile.name}`;
+      const storageRef = ref(storage, storagePath);
       await uploadBytes(storageRef, logoFile);
       logoUrl = await getDownloadURL(storageRef);
+      logoPath = storagePath;
     }
-
-    await addDoc(collection(db, "supporters"), {
+  
+    await setDoc(doc(db, "supporters", slug), {
       name,
       description,
       logo: logoUrl,
+      logoPath,
     });
-
+  
     fetchSupporters();
   };
+  
+  
 
   const handleDeleteSupporter = async (id: string) => {
     await deleteDoc(doc(db, "supporters", id));
@@ -87,6 +101,13 @@ export default function SupportersAdminPage() {
               {supporter.logo && (
                 <img src={supporter.logo} alt={supporter.name} className="h-12 w-auto rounded" />
               )}
+
+<Link
+    href={`/admin/supporters/${supporter.id}`}
+    className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+  >
+    Edit
+  </Link>
               <button
                 onClick={() => handleDeleteSupporter(supporter.id)}
                 className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
