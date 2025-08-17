@@ -95,6 +95,13 @@ export default function SupportersAdminPage() {
               {supporter.logo && (
                 <img src={supporter.logo} alt={supporter.name} className="h-12 w-auto rounded" />
               )}
+
+<Link
+    href={`/admin/supporters/${supporter.id}`}
+    className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+  >
+    Edit
+  </Link>
               <button
                 onClick={() => handleDeleteSupporter(supporter.id)}
                 className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
