@@ -8,6 +8,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import AdminSupporterForm from "../../../components/AdminSupporterForm";
 import { useRouter } from "next/navigation";
 import { setDoc, doc } from "firebase/firestore";
+import Link from "next/link";
 
 
 interface Supporter {
