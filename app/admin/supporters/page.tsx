@@ -54,21 +54,26 @@ export default function SupportersAdminPage() {
     logoFile?: File
   ) => {
     let logoUrl = "";
+    let logoPath = "";
   
     if (logoFile) {
-      const storageRef = ref(storage, `logos/${Date.now()}_${logoFile.name}`);
+      const storagePath = `logos/${Date.now()}_${logoFile.name}`;
+      const storageRef = ref(storage, storagePath);
       await uploadBytes(storageRef, logoFile);
       logoUrl = await getDownloadURL(storageRef);
+      logoPath = storagePath;
     }
   
     await setDoc(doc(db, "supporters", slug), {
       name,
       description,
       logo: logoUrl,
+      logoPath,
     });
   
     fetchSupporters();
   };
+  
   
 
   const handleDeleteSupporter = async (id: string) => {
