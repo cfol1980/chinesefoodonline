@@ -129,6 +129,13 @@ export default function SupporterDashboard() {
           >
             + Add Menu Item
           </Link>
+          <Link
+  href="/supporter-dashboard/add-recommendation"
+  className="inline-block bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 mt-2"
+>
+  + Add Recommended Dish
+</Link>
+
 
           {supporterData.menu && supporterData.menu.length > 0 && (
             <div className="mt-4">

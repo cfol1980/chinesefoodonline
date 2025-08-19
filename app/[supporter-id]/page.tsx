@@ -130,19 +130,28 @@ export default function Supporter() {
         )}
       </div>
 
-      {/* Recommendations */}
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold mb-2">Recommended Items</h2>
-        {recommendations.length > 0 ? (
-          <ul className="list-disc pl-5">
-            {recommendations.map((item, index) => (
-              <li key={index} className="text-md">{item}</li>
-            ))}
-          </ul>
-        ) : (
-          <p>No recommendations yet.</p>
-        )}
-      </div>
+      {/* Recommendations with images */}
+<div className="mb-6">
+  <h2 className="text-xl font-semibold mb-2">Recommended Items</h2>
+  {recommendations.length > 0 ? (
+    <div className="space-y-4">
+      {recommendations.map((item: any, index: number) => (
+        <div key={index} className="bg-white rounded shadow p-4 flex flex-col sm:flex-row gap-4">
+          {item.image && (
+            <img src={item.image} alt={item.name} className="h-32 w-32 object-cover rounded"/>
+          )}
+          <div>
+            <h3 className="font-bold">{item.name}</h3>
+            <p className="text-gray-700">{item.description}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  ) : (
+    <p>No recommendations yet.</p>
+  )}
+</div>
+
 
       {/* Store Pictures */}
       <div className="mt-8">
