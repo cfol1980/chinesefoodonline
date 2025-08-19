@@ -18,6 +18,7 @@ export default function Supporter() {
   const [storeImage, setStoreImage] = useState<string>('');
   const [menu, setMenu] = useState<{ name: string; image?: string }[]>([]);
   const [recommendations, setRecommendations] = useState<string[]>([]);
+  const [businessHours, setBusinessHours] = useState("");
 
   // Modal state (index instead of just image)
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -77,6 +78,7 @@ export default function Supporter() {
             setStoreImage(data.storeImage || '');
             setMenu(data.menu || []);
             setRecommendations(data.recommendations || []);
+            setBusinessHours(data.businessHours || "");
           } else {
             setError('Supporter not found.');
           }
@@ -101,6 +103,7 @@ export default function Supporter() {
       <p className="text-center text-gray-600 mb-4">{description}</p>
       {location && <p className="text-center">📍 {location}</p>}
       {phone && <p className="text-center">📞 {phone}</p>}
+      {businessHours && <p className="text-center">🕒 {businessHours}</p>}
 
       {/* Menu list */}
       <div className="mb-6">
