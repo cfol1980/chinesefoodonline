@@ -212,23 +212,41 @@ export default function AdminEditSupporter() {
           />
         </div>
 
-        {/* QR Code Section */}
-        <div>
-          <label className="block font-semibold">QR Code</label>
-          {data.qrCodeUrl ? (
-            <img src={data.qrCodeUrl} alt="QR Code" className="h-24 mb-2" />
-          ) : (
-            <p>No QR code generated yet.</p>
-          )}
+       {/* QR Code Section */}
+<div>
+  <label className="block font-semibold mb-1">QR Code</label>
 
-          <button
-            type="button"
-            onClick={generateQr}
-            className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-          >
-            Generate QR Code
-          </button>
-        </div>
+  {data.qrCodeUrl ? (
+    <>
+      <img src={data.qrCodeUrl} alt="QR Code" className="h-24 w-24 mb-2" />
+      <div className="flex gap-2">
+        <a
+          href={data.qrCodeUrl}
+          download={`qr-${slug}.png`}
+          className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+        >
+          Download QR
+        </a>
+        <button
+          type="button"
+          onClick={generateQr}
+          className="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600"
+        >
+          Regenerate QR
+        </button>
+      </div>
+    </>
+  ) : (
+    <button
+      type="button"
+      onClick={generateQr}
+      className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+    >
+      Generate QR Code
+    </button>
+  )}
+</div>
+
 
         <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
           Save Changes
