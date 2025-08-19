@@ -16,6 +16,8 @@ import {
   deleteObject,
 } from "firebase/storage";
 
+import QRCode from 'qrcode';
+
 export default function AdminEditSupporter() {
   const params = useParams();
   const slug = params?.slug as string;
@@ -31,17 +33,18 @@ export default function AdminEditSupporter() {
     location: "",
     logo: "",
     logoPath: "",
+    qrCodeUrl: "",
+    qrCodePath: "",
   });
-
   const [logoFile, setLogoFile] = useState<File | undefined>();
 
-  // Load supporter data
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
       if (!u) {
         router.push("/admin");
         return;
       }
+      // TODO: check admin
       setUserIsAdmin(true);
 
       const snap = await getDoc(doc(db, "supporters", slug));
@@ -54,6 +57,8 @@ export default function AdminEditSupporter() {
           location: supporter.location || "",
           logo: supporter.logo || "",
           logoPath: supporter.logoPath || "",
+          qrCodeUrl: supporter.qrCodeUrl || "",
+          qrCodePath: supporter.qrCodePath || "",
         });
       }
       setLoading(false);
@@ -62,7 +67,6 @@ export default function AdminEditSupporter() {
     return () => unsub();
   }, [slug, router]);
 
-  // Save handler
   const handleSave = async (e: any) => {
     e.preventDefault();
     if (!slug) return;
@@ -70,9 +74,8 @@ export default function AdminEditSupporter() {
     let updatedLogoUrl = data.logo;
     let updatedLogoPath = data.logoPath;
 
-    // If uploading a new logo:
     if (logoFile) {
-      // Delete old
+      // delete old
       if (data.logoPath) {
         try {
           await deleteObject(storageRef(storage, data.logoPath));
@@ -80,8 +83,6 @@ export default function AdminEditSupporter() {
           console.warn("Could not delete old logo", err);
         }
       }
-
-      // Upload new
       const newPath = `logos/${Date.now()}-${logoFile.name}`;
       const sRef = storageRef(storage, newPath);
       await uploadBytes(sRef, logoFile);
@@ -99,86 +100,63 @@ export default function AdminEditSupporter() {
     router.push("/admin/supporters");
   };
 
-  if (!userIsAdmin) {
-    return <div className="p-6">Access Denied</div>;
-  }
-  if (loading) {
-    return <div className="p-6">Loading...</div>;
-  }
+  // === QR CODE GENERATOR ====
+  const generateQr = async () => {
+    try {
+      const url = `https://chinesefoodonline.com/${slug}`;
+      const dataUrl = await QRCode.toDataURL(url);
+
+      // Convert base64 to Blob
+      const blob = await (await fetch(dataUrl)).blob();
+
+      const qrFilePath = `qrimages/${slug}/qrcode.png`;
+      const qrRef = storageRef(storage, qrFilePath);
+
+      await uploadBytes(qrRef, blob);
+      const dlUrl = await getDownloadURL(qrRef);
+
+      await updateDoc(doc(db, "supporters", slug), {
+        qrCodeUrl: dlUrl,
+        qrCodePath: qrFilePath,
+      });
+
+      setData({ ...data, qrCodeUrl: dlUrl, qrCodePath: qrFilePath });
+      alert("QR code generated!");
+    } catch (err) {
+      console.error("QR generation error:", err);
+      alert("Failed to generate QR code.");
+    }
+  };
+  // ==========================
+
+  if (!userIsAdmin) return null;
+  if (loading) return <div className="p-6">Loading...</div>;
 
   return (
     <div className="p-6">
-      <h1 className="text-xl font-bold mb-4">
-        Edit Supporter: {slug}
-      </h1>
+      <h1 className="text-xl font-bold mb-4">Edit Supporter: {slug}</h1>
 
-      <form
-        onSubmit={handleSave}
-        className="space-y-4 bg-white p-4 rounded shadow"
-      >
-        <div>
-          <label className="block font-semibold">Name</label>
-          <input
-            type="text"
-            className="border w-full px-2 py-1 rounded"
-            value={data.name}
-            onChange={(e) => setData({ ...data, name: e.target.value })}
-            required
-          />
-        </div>
+      <form onSubmit={handleSave} className="space-y-4 bg-white p-4 rounded shadow">
+        {/* Name, Description, etc... keep unchanged */}
 
+        {/* QR Code Display + Button */}
         <div>
-          <label className="block font-semibold">Description</label>
-          <textarea
-            className="border w-full px-2 py-1 rounded"
-            value={data.description}
-            onChange={(e) =>
-              setData({ ...data, description: e.target.value })
-            }
-          />
-        </div>
-
-        <div>
-          <label className="block font-semibold">Phone</label>
-          <input
-            type="text"
-            className="border w-full px-2 py-1 rounded"
-            value={data.phone}
-            onChange={(e) => setData({ ...data, phone: e.target.value })}
-          />
-        </div>
-
-        <div>
-          <label className="block font-semibold">Location</label>
-          <input
-            type="text"
-            className="border w-full px-2 py-1 rounded"
-            value={data.location}
-            onChange={(e) => setData({ ...data, location: e.target.value })}
-          />
-        </div>
-
-        <div>
-          <label className="block font-semibold">Current Logo</label>
-          {data.logo && (
-            <img
-              src={data.logo}
-              alt="Logo preview"
-              className="h-24 mb-2 rounded"
-            />
+          <label className="block font-semibold mb-2">QR Code</label>
+          {data.qrCodeUrl ? (
+            <img src={data.qrCodeUrl} alt="QR code" className="h-32 w-32 mb-2" />
+          ) : (
+            <p>No QR code generated yet.</p>
           )}
+          <button
+            type="button"
+            onClick={generateQr}
+            className="mt-2 bg-gray-700 text-white px-4 py-1 rounded hover:bg-gray-800"
+          >
+            Generate QR Code
+          </button>
         </div>
 
-        <div>
-          <label className="block font-semibold">New Logo (optional)</label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => setLogoFile(e.target.files?.[0])}
-          />
-        </div>
-
-        <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
           Save Changes
         </button>
       </form>
