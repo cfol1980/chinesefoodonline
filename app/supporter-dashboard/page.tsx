@@ -9,11 +9,21 @@ import {
   updateDoc,
   arrayRemove,
 } from "firebase/firestore";
-import { deleteObject, ref as storageRef } from "firebase/storage";
+import {
+  ref as storageRef,
+  deleteObject,
+} from "firebase/storage";
 import Link from "next/link";
 
 interface MenuItem {
   name: string;
+  image?: string;
+  path?: string;
+}
+
+interface RecItem {
+  name: string;
+  description?: string;
   image?: string;
   path?: string;
 }
@@ -23,7 +33,9 @@ interface SupporterData {
   description?: string;
   phone?: string;
   location?: string;
+  businessHours?: string;
   menu?: MenuItem[];
+  recommendations?: RecItem[];
 }
 
 export default function SupporterDashboard() {
@@ -44,6 +56,7 @@ export default function SupporterDashboard() {
       }
 
       setUser(firebaseUser);
+
       const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
       if (userDoc.exists()) {
         const data = userDoc.data();
@@ -51,6 +64,7 @@ export default function SupporterDashboard() {
 
         if (data.role === "supporter" && data.ownedSupporterId) {
           setSlug(data.ownedSupporterId);
+
           const supporterDoc = await getDoc(
             doc(db, "supporters", data.ownedSupporterId)
           );
@@ -64,24 +78,37 @@ export default function SupporterDashboard() {
     return () => unsub();
   }, []);
 
-  const handleDelete = async (itemToDelete: MenuItem) => {
+  const handleDeleteMenu = async (itemToDelete: MenuItem) => {
+    if (!slug) return;
     try {
-      // 1) Delete from storage if path is provided
       if (itemToDelete.path) {
-        const fileRef = storageRef(storage, itemToDelete.path);
-        await deleteObject(fileRef);
+        await deleteObject(storageRef(storage, itemToDelete.path));
       }
-
-      // 2) Remove from Firestore array
-      await updateDoc(doc(db, "supporters", slug!), {
+      await updateDoc(doc(db, "supporters", slug), {
         menu: arrayRemove(itemToDelete),
       });
-
-      alert("Deleted!");
+      alert("Menu item deleted!");
       window.location.reload();
     } catch (err) {
       console.error(err);
-      alert("Failed to delete.");
+      alert("Delete failed.");
+    }
+  };
+
+  const handleDeleteRecommendation = async (recToDelete: RecItem) => {
+    if (!slug) return;
+    try {
+      if (recToDelete.path) {
+        await deleteObject(storageRef(storage, recToDelete.path));
+      }
+      await updateDoc(doc(db, "supporters", slug), {
+        recommendations: arrayRemove(recToDelete),
+      });
+      alert("Recommendation deleted!");
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+      alert("Delete failed.");
     }
   };
 
@@ -102,18 +129,11 @@ export default function SupporterDashboard() {
       {supporterData ? (
         <div className="bg-white p-4 rounded shadow space-y-4">
           <div>
-            <p>
-              <strong>Name:</strong> {supporterData.name}
-            </p>
-            <p>
-              <strong>Description:</strong> {supporterData.description}
-            </p>
-            <p>
-              <strong>Phone:</strong> {supporterData.phone}
-            </p>
-            <p>
-              <strong>Location:</strong> {supporterData.location}
-            </p>
+            <p><strong>Name:</strong> {supporterData.name}</p>
+            <p><strong>Description:</strong> {supporterData.description}</p>
+            <p><strong>Phone:</strong> {supporterData.phone}</p>
+            <p><strong>Location:</strong> {supporterData.location}</p>
+            <p><strong>Business Hours:</strong> {supporterData.businessHours}</p>
           </div>
 
           <Link
@@ -130,8 +150,16 @@ export default function SupporterDashboard() {
             + Add Menu Item
           </Link>
 
+          <Link
+            href={`/supporter-dashboard/add-recommendation`}
+            className="inline-block bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+          >
+            + Add Recommended Dish
+          </Link>
+
+          {/* Menu items with delete */}
           {supporterData.menu && supporterData.menu.length > 0 && (
-            <div className="mt-4">
+            <div className="mt-6">
               <h2 className="text-xl font-semibold mb-2">Menu Items</h2>
               {supporterData.menu.map((item, index) => (
                 <div
@@ -140,7 +168,7 @@ export default function SupporterDashboard() {
                 >
                   <span>{item.name}</span>
                   <button
-                    onClick={() => handleDelete(item)}
+                    onClick={() => handleDeleteMenu(item)}
                     className="text-red-600 hover:text-red-700"
                   >
                     Delete
@@ -149,6 +177,30 @@ export default function SupporterDashboard() {
               ))}
             </div>
           )}
+
+          {/* Recommendations with delete */}
+          {supporterData.recommendations &&
+            supporterData.recommendations.length > 0 && (
+              <div className="mt-6">
+                <h2 className="text-xl font-semibold mb-2">
+                  Recommended Dishes
+                </h2>
+                {supporterData.recommendations.map((rec, index) => (
+                  <div
+                    key={index}
+                    className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded"
+                  >
+                    <span>{rec.name}</span>
+                    <button
+                      onClick={() => handleDeleteRecommendation(rec)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
         </div>
       ) : (
         <p>No supporter record associated with this account.</p>

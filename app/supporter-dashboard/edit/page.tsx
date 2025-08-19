@@ -15,6 +15,7 @@ export default function EditSupporterPage() {
   const [description, setDescription] = useState("");
   const [phone, setPhone] = useState("");
   const [location, setLocation] = useState("");
+  const [businessHours, setBusinessHours] = useState("");
 
   const router = useRouter();
 
@@ -24,7 +25,6 @@ export default function EditSupporterPage() {
 
       setUser(firebaseUser);
 
-      // get the user role and supporter slug
       const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
       if (userDoc.exists()) {
         const data = userDoc.data();
@@ -34,7 +34,6 @@ export default function EditSupporterPage() {
           const supporterSlug = data.ownedSupporterId;
           setSlug(supporterSlug);
 
-          // fetch supporter info
           const supRef = doc(db, "supporters", supporterSlug);
           const supSnap = await getDoc(supRef);
           if (supSnap.exists()) {
@@ -43,6 +42,7 @@ export default function EditSupporterPage() {
             setDescription(sup.description || "");
             setPhone(sup.phone || "");
             setLocation(sup.location || "");
+            setBusinessHours(sup.businessHours || "");
           }
         }
       }
@@ -56,15 +56,14 @@ export default function EditSupporterPage() {
     if (!slug) return;
 
     try {
-      const ref = doc(db, "supporters", slug);
-      await updateDoc(ref, {
+      await updateDoc(doc(db, "supporters", slug), {
         name,
         description,
         phone,
         location,
+        businessHours,
       });
       alert("Profile updated!");
-
       router.push("/supporter-dashboard");
     } catch (err) {
       console.error("Failed to update:", err);
@@ -81,50 +80,37 @@ export default function EditSupporterPage() {
       <h1 className="text-2xl font-bold mb-4">Edit Supporter Profile</h1>
 
       <form onSubmit={handleSubmit} className="space-y-4 bg-white p-4 rounded shadow">
+        {/* Name */}
         <div>
           <label className="block mb-1 font-semibold">Name</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full border px-2 py-1 rounded"
-            required
-          />
+          <input type="text" className="w-full border px-2 py-1 rounded" value={name} onChange={(e) => setName(e.target.value)} required />
         </div>
 
+        {/* Description */}
         <div>
           <label className="block mb-1 font-semibold">Description</label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full border px-2 py-1 rounded"
-          />
+          <textarea className="w-full border px-2 py-1 rounded" value={description} onChange={(e) => setDescription(e.target.value)} />
         </div>
 
+        {/* Phone */}
         <div>
           <label className="block mb-1 font-semibold">Phone</label>
-          <input
-            type="text"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="w-full border px-2 py-1 rounded"
-          />
+          <input type="text" className="w-full border px-2 py-1 rounded" value={phone} onChange={(e) => setPhone(e.target.value)} />
         </div>
 
+        {/* Location */}
         <div>
           <label className="block mb-1 font-semibold">Location</label>
-          <input
-            type="text"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            className="w-full border px-2 py-1 rounded"
-          />
+          <input type="text" className="w-full border px-2 py-1 rounded" value={location} onChange={(e) => setLocation(e.target.value)} />
         </div>
 
-        <button
-          type="submit"
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
+        {/* Business Hours */}
+        <div>
+          <label className="block mb-1 font-semibold">Business Hours</label>
+          <input type="text" className="w-full border px-2 py-1 rounded" value={businessHours} onChange={(e) => setBusinessHours(e.target.value)} placeholder="Mon-Fri 10am - 8pm" />
+        </div>
+
+        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
           Save
         </button>
       </form>
