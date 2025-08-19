@@ -27,7 +27,6 @@ export default function ManageUsersPage() {
         router.push("/admin");
         return;
       }
-      // you can fetch role here for a real check:
       setUserIsAdmin(true);
     });
     return () => unsub();
@@ -52,6 +51,11 @@ export default function ManageUsersPage() {
     alert("Role updated!");
   };
 
+  const handleSlugUpdate = async (id: string, newSlug: string) => {
+    await updateDoc(doc(db, "users", id), { ownedSupporterId: newSlug });
+    alert("Slug assigned!");
+  };
+
   if (!userIsAdmin) return null;
   if (loading) return <div className="p-6">Loading users...</div>;
 
@@ -64,8 +68,8 @@ export default function ManageUsersPage() {
           <tr className="bg-gray-200">
             <th className="py-2 px-4 text-left">Email</th>
             <th className="py-2 px-4 text-left">Role</th>
-            <th className="py-2 px-4">Owned Supporter ID</th>
-            <th className="py-2 px-4"></th>
+            <th className="py-2 px-4 text-left">Owned Supporter</th>
+            <th className="py-2 px-4 text-left">Assign Slug</th>
           </tr>
         </thead>
         <tbody>
@@ -84,13 +88,41 @@ export default function ManageUsersPage() {
                   <option value="admin">admin</option>
                 </select>
               </td>
-              <td className="py-2 px-4 text-center">
+
+              {/* Display current slug or '-' */}
+              <td className="py-2 px-4">
                 {u.ownedSupporterId || "-"}
+              </td>
+
+              {/* Input to assign */}
+              <td className="py-2 px-4">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const inputValue = e.currentTarget.slugInput.value;
+                    handleSlugUpdate(u.id, inputValue);
+                  }}
+                >
+                  <input
+                    name="slugInput"
+                    type="text"
+                    placeholder="e.g. enoodle"
+                    defaultValue={u.ownedSupporterId}
+                    className="border px-2 py-1 rounded mr-2"
+                  />
+                  <button
+                    type="submit"
+                    className="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600"
+                  >
+                    Save
+                  </button>
+                </form>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+
       <Link href="/admin" className="mt-6 inline-block text-blue-600">
         ← Back to Admin Dashboard
       </Link>
