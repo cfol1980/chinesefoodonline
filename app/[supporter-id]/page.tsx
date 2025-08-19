@@ -103,12 +103,7 @@ export default function Supporter() {
       {/* Header */}
       <h1 className="text-2xl font-bold text-center mb-2">{name}</h1>
       <p className="text-center text-gray-600 mb-4">{description}</p>
-      {qrCodeUrl && (
-  <div className="text-center mt-6">
-    <h3 className="text-md font-semibold mb-2">Scan for this page:</h3>
-    <img src={qrCodeUrl} alt="QR Code" className="mx-auto h-40 w-40" />
-  </div>
-)}
+      
 
       {location && <p className="text-center">📍 {location}</p>}
       {phone && <p className="text-center">📞 {phone}</p>}
@@ -173,7 +168,12 @@ export default function Supporter() {
           />
         </div>
       </div>
-
+      {qrCodeUrl && (
+  <div className="text-center mt-6">
+    <h3 className="text-md font-semibold mb-2">Scan for this page:</h3>
+    <img src={qrCodeUrl} alt="QR Code" className="mx-auto h-40 w-40" />
+  </div>
+)}
       {/* Image Modal with swipe */}
       {selectedIndex !== null && menu[selectedIndex]?.image && (
         <div
