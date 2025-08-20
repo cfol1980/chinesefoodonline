@@ -156,6 +156,12 @@ export default function SupporterDashboard() {
           >
             + Add Recommended Dish
           </Link>
+          <Link
+  href="/supporter-dashboard/add-store-photo"
+  className="inline-block bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 mt-2"
+>
+  + Add Store Photo
+</Link>
 
           {/* Menu items with delete */}
           {supporterData.menu && supporterData.menu.length > 0 && (
