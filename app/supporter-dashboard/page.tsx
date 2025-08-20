@@ -28,6 +28,11 @@ interface RecItem {
   path?: string;
 }
 
+interface ImgItem {
+  url: string;
+  path: string;
+}
+
 interface SupporterData {
   name?: string;
   description?: string;
@@ -36,6 +41,7 @@ interface SupporterData {
   businessHours?: string;
   menu?: MenuItem[];
   recommendations?: RecItem[];
+  storeImages?: ImgItem[];
 }
 
 export default function SupporterDashboard() {
@@ -112,6 +118,23 @@ export default function SupporterDashboard() {
     }
   };
 
+  const handleDeleteStoreImage = async (imgToDelete: ImgItem) => {
+    if (!slug) return;
+    try {
+      if (imgToDelete.path) {
+        await deleteObject(storageRef(storage, imgToDelete.path));
+      }
+      await updateDoc(doc(db, "supporters", slug), {
+        storeImages: arrayRemove(imgToDelete),
+      });
+      alert("Store image deleted!");
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+      alert("Delete failed.");
+    }
+  };
+
   if (loading) return <div className="p-4">Loading...</div>;
   if (!user) return <div className="p-4">Please log in to continue.</div>;
   if (role !== "supporter") {
@@ -156,57 +179,53 @@ export default function SupporterDashboard() {
           >
             + Add Recommended Dish
           </Link>
-          <Link
-  href="/supporter-dashboard/add-store-photo"
-  className="inline-block bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 mt-2"
->
-  + Add Store Photo
-</Link>
 
-          {/* Menu items with delete */}
+          <Link
+            href={`/supporter-dashboard/add-store-photo`}
+            className="inline-block bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
+          >
+            + Add Store Photo
+          </Link>
+
+          {/* Menu items */}
           {supporterData.menu && supporterData.menu.length > 0 && (
             <div className="mt-6">
               <h2 className="text-xl font-semibold mb-2">Menu Items</h2>
               {supporterData.menu.map((item, index) => (
-                <div
-                  key={index}
-                  className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded"
-                >
+                <div key={index} className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded">
                   <span>{item.name}</span>
-                  <button
-                    onClick={() => handleDeleteMenu(item)}
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    Delete
-                  </button>
+                  <button onClick={() => handleDeleteMenu(item)} className="text-red-600 hover:text-red-700">Delete</button>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Recommendations with delete */}
-          {supporterData.recommendations &&
-            supporterData.recommendations.length > 0 && (
-              <div className="mt-6">
-                <h2 className="text-xl font-semibold mb-2">
-                  Recommended Dishes
-                </h2>
-                {supporterData.recommendations.map((rec, index) => (
-                  <div
-                    key={index}
-                    className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded"
-                  >
-                    <span>{rec.name}</span>
-                    <button
-                      onClick={() => handleDeleteRecommendation(rec)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+          {/* Recommendations */}
+          {supporterData.recommendations && supporterData.recommendations.length > 0 && (
+            <div className="mt-6">
+              <h2 className="text-xl font-semibold mb-2">Recommended Dishes</h2>
+              {supporterData.recommendations.map((rec, index) => (
+                <div key={index} className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded">
+                  <span>{rec.name}</span>
+                  <button onClick={() => handleDeleteRecommendation(rec)} className="text-red-600 hover:text-red-700">Delete</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Store Images */}
+          {supporterData.storeImages && supporterData.storeImages.length > 0 && (
+            <div className="mt-6">
+              <h2 className="text-xl font-semibold mb-2">Store Photos</h2>
+              {supporterData.storeImages.map((img, index) => (
+                <div key={index} className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded">
+                  <span>Photo {index + 1}</span>
+                  <button onClick={() => handleDeleteStoreImage(img)} className="text-red-600 hover:text-red-700">Delete</button>
+                </div>
+              ))}
+            </div>
+          )}
+
         </div>
       ) : (
         <p>No supporter record associated with this account.</p>
