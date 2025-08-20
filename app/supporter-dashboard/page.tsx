@@ -213,18 +213,29 @@ export default function SupporterDashboard() {
             </div>
           )}
 
-          {/* Store Images */}
-          {supporterData.storeImages && supporterData.storeImages.length > 0 && (
-            <div className="mt-6">
-              <h2 className="text-xl font-semibold mb-2">Store Photos</h2>
-              {supporterData.storeImages.map((img, index) => (
-                <div key={index} className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded">
-                  <span>Photo {index + 1}</span>
-                  <button onClick={() => handleDeleteStoreImage(img)} className="text-red-600 hover:text-red-700">Delete</button>
-                </div>
-              ))}
-            </div>
+        {/* Store Images */}
+{supporterData.storeImages && supporterData.storeImages.length > 0 && (
+  <div className="mt-6">
+    <h2 className="text-xl font-semibold mb-2">Store Photos</h2>
+    {supporterData.storeImages.map((img: any, index) => (
+      <div key={index} className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded">
+        <div className="flex items-center gap-2">
+          {img.image && (
+            <img src={img.image} alt={img.name} className="h-12 w-12 object-cover rounded" />
           )}
+          <span>{img.name}</span>
+        </div>
+        <button
+          onClick={() => handleDeleteStoreImage(img)}
+          className="text-red-600 hover:text-red-700"
+        >
+          Delete
+        </button>
+      </div>
+    ))}
+  </div>
+)}
+
 
         </div>
       ) : (

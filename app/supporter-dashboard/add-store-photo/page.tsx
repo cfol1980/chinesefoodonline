@@ -16,7 +16,10 @@ export default function AddStorePhotoPage() {
   const [slug, setSlug] = useState<string | null>(null);
   const [currentCount, setCurrentCount] = useState<number>(0);
 
+  // NEW: name / title field
+  const [photoName, setPhotoName] = useState("");
   const [file, setFile] = useState<File | null>(null);
+
   const router = useRouter();
 
   useEffect(() => {
@@ -30,8 +33,9 @@ export default function AddStorePhotoPage() {
           setRole("supporter");
           setSlug(data.ownedSupporterId);
 
-          // Count existing photos
-          const supporterSnap = await getDoc(doc(db, "supporters", data.ownedSupporterId));
+          const supporterSnap = await getDoc(
+            doc(db, "supporters", data.ownedSupporterId)
+          );
           if (supporterSnap.exists()) {
             const sup = supporterSnap.data();
             setCurrentCount((sup.storeImages || []).length);
@@ -58,7 +62,7 @@ export default function AddStorePhotoPage() {
       const url = await getDownloadURL(storageRef);
 
       await updateDoc(doc(db, "supporters", slug), {
-        storeImages: arrayUnion({ url, path }),
+        storeImages: arrayUnion({ name: photoName || "Store Photo", image: url, path }),
       });
 
       alert("Store photo added!");
@@ -82,12 +86,21 @@ export default function AddStorePhotoPage() {
       {currentCount >= 5 ? (
         <p className="text-red-600">You have reached the limit of 5 photos.</p>
       ) : (
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-4 bg-white p-4 rounded shadow max-w-md"
-        >
+        <form onSubmit={handleSubmit} className="space-y-4 bg-white p-4 rounded shadow max-w-md">
+
           <div>
-            <label>Photo File</label>
+            <label className="block font-semibold">Photo Title / Label</label>
+            <input
+              type="text"
+              value={photoName}
+              onChange={(e) => setPhotoName(e.target.value)}
+              placeholder="e.g. Front Entrance"
+              className="border w-full px-2 py-1 rounded"
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold">Photo File</label>
             <input
               type="file"
               accept="image/*"
