@@ -20,6 +20,8 @@ export default function Supporter() {
   const [recommendations, setRecommendations] = useState<string[]>([]);
   const [businessHours, setBusinessHours] = useState("");
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
+   // new: storeImages array
+   const [storeImages, setStoreImages] = useState<{ url: string, path: string }[]>([]);
 
   // Modal state (index instead of just image)
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -81,6 +83,7 @@ export default function Supporter() {
             setRecommendations(data.recommendations || []);
             setBusinessHours(data.businessHours || "");
             setQrCodeUrl(data.qrCodeUrl || "");
+            setStoreImages(data.storeImages || []);
           } else {
             setError('Supporter not found.');
           }
@@ -157,17 +160,25 @@ export default function Supporter() {
 </div>
 
 
-      {/* Store Pictures */}
-      <div className="mt-8">
-        <h2 className="text-xl font-semibold mb-3">Pictures</h2>
-        <div className="flex flex-wrap gap-4">
-          <img
-            src={`/${supporterId}/store.jpg`}
-            alt="Store"
-            className="rounded-lg shadow-md max-w-xs"
-          />
-        </div>
+     {/* Store Images Display */}
+     <div className="mt-8">
+        <h2 className="text-xl font-semibold mb-3">Store Pictures</h2>
+        {storeImages.length > 0 ? (
+          <div className="flex flex-wrap gap-4">
+            {storeImages.map((imgObj, i) => (
+              <img
+                key={i}
+                src={imgObj.url}
+                alt="Store"
+                className="rounded-lg shadow-md max-w-xs"
+              />
+            ))}
+          </div>
+        ) : (
+          <p>No store photos uploaded yet.</p>
+        )}
       </div>
+      
       {qrCodeUrl && (
   <div className="text-center mt-6">
     <h3 className="text-md font-semibold mb-2">Scan for this page:</h3>
