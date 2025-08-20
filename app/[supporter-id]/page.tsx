@@ -11,26 +11,26 @@ export default function Supporter() {
 
   const [isValid, setIsValid] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
   const [name, setName] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
   const [location, setLocation] = useState<string>('');
-  const [storeImage, setStoreImage] = useState<string>('');
-  const [menu, setMenu] = useState<{ name: string; image?: string }[]>([]);
-  const [recommendations, setRecommendations] = useState<string[]>([]);
   const [businessHours, setBusinessHours] = useState("");
-  const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
-   // new: storeImages array
-   const [storeImages, setStoreImages] = useState<{ url: string, path: string }[]>([]);
+  const [qrCodeUrl, setQrCodeUrl] = useState("");
+  const [menu, setMenu] = useState<{ name: string; image?: string }[]>([]);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [storeImages, setStoreImages] = useState<
+    { name: string; image: string; path: string }[]
+  >([]);
 
-  // Modal state (index instead of just image)
+  // Modal state for menu images
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
-  // Swipe tracking
+  // Swipe gestures
+  const MIN_SWIPE_DISTANCE = 50;
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
-
-  const MIN_SWIPE_DISTANCE = 50; // pixels
 
   const handlePrev = useCallback(() => {
     if (selectedIndex === null) return;
@@ -42,16 +42,13 @@ export default function Supporter() {
     setSelectedIndex((prev) => (prev! < menu.length - 1 ? prev! + 1 : 0));
   }, [selectedIndex, menu.length]);
 
-  // Touch handlers
   const onTouchStart = (e: React.TouchEvent) => {
     setTouchEnd(null);
     setTouchStart(e.targetTouches[0].clientX);
   };
-
   const onTouchMove = (e: React.TouchEvent) => {
     setTouchEnd(e.targetTouches[0].clientX);
   };
-
   const onTouchEnd = () => {
     if (!touchStart || !touchEnd) return;
     const distance = touchStart - touchEnd;
@@ -64,6 +61,7 @@ export default function Supporter() {
     }
   };
 
+  // Fetch supporter info
   useEffect(() => {
     const fetchSupporterData = async () => {
       if (supporterId && typeof supporterId === 'string') {
@@ -74,15 +72,14 @@ export default function Supporter() {
           if (docSnap.exists()) {
             const data = docSnap.data();
             setIsValid(true);
-            setName(data.name || 'A Hidden Supporter');
+            setName(data.name || '');
             setDescription(data.description || '');
             setPhone(data.phone || '');
             setLocation(data.location || '');
-            setStoreImage(data.storeImage || '');
-            setMenu(data.menu || []);
-            setRecommendations(data.recommendations || []);
             setBusinessHours(data.businessHours || "");
             setQrCodeUrl(data.qrCodeUrl || "");
+            setMenu(data.menu || []);
+            setRecommendations(data.recommendations || []);
             setStoreImages(data.storeImages || []);
           } else {
             setError('Supporter not found.');
@@ -106,14 +103,21 @@ export default function Supporter() {
       {/* Header */}
       <h1 className="text-2xl font-bold text-center mb-2">{name}</h1>
       <p className="text-center text-gray-600 mb-4">{description}</p>
-      
 
       {location && <p className="text-center">📍 {location}</p>}
       {phone && <p className="text-center">📞 {phone}</p>}
       {businessHours && <p className="text-center">🕒 {businessHours}</p>}
 
-      {/* Menu list */}
-      <div className="mb-6">
+      {/* QR Code */}
+      {qrCodeUrl && (
+        <div className="text-center mt-6">
+          <h3 className="text-md font-semibold mb-2">Scan & Share</h3>
+          <img src={qrCodeUrl} alt="QR Code" className="mx-auto h-40 w-40" />
+        </div>
+      )}
+
+      {/* Menu */}
+      <div className="mb-6 mt-6">
         <h2 className="text-xl font-semibold mb-2">Menu</h2>
         {menu.length > 0 ? (
           <ul className="list-disc pl-5">
@@ -137,55 +141,56 @@ export default function Supporter() {
         )}
       </div>
 
-      {/* Recommendations with images */}
-<div className="mb-6">
-  <h2 className="text-xl font-semibold mb-2">Recommended Items</h2>
-  {recommendations.length > 0 ? (
-    <div className="space-y-4">
-      {recommendations.map((item: any, index: number) => (
-        <div key={index} className="bg-white rounded shadow p-4 flex flex-col sm:flex-row gap-4">
-          {item.image && (
-            <img src={item.image} alt={item.name} className="h-32 w-32 object-cover rounded"/>
-          )}
-          <div>
-            <h3 className="font-bold">{item.name}</h3>
-            <p className="text-gray-700">{item.description}</p>
+      {/* Recommendations */}
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold mb-2">Recommended Items</h2>
+        {recommendations.length > 0 ? (
+          <div className="space-y-4">
+            {recommendations.map((item: any, index: number) => (
+              <div key={index} className="bg-white rounded shadow p-4 flex flex-col sm:flex-row gap-4">
+                {item.image && (
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                    className="h-32 w-32 object-cover rounded"
+                  />
+                )}
+                <div>
+                  <h3 className="font-bold">{item.name}</h3>
+                  <p className="text-gray-700">{item.description}</p>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
-      ))}
-    </div>
-  ) : (
-    <p>No recommendations yet.</p>
-  )}
-</div>
+        ) : (
+          <p>No recommendations yet.</p>
+        )}
+      </div>
 
-
-     {/* Store Images Display */}
-     <div className="mt-8">
+      {/* Store Photos */}
+      <div className="mt-8">
         <h2 className="text-xl font-semibold mb-3">Store Pictures</h2>
         {storeImages.length > 0 ? (
           <div className="flex flex-wrap gap-4">
             {storeImages.map((imgObj, i) => (
-              <img
-                key={i}
-                src={imgObj.url}
-                alt="Store"
-                className="rounded-lg shadow-md max-w-xs"
-              />
+              <div key={i} className="text-center">
+                <img
+                  src={imgObj.image}
+                  alt={imgObj.name}
+                  className="rounded-lg shadow-md max-w-xs"
+                />
+                {imgObj.name && (
+                  <p className="mt-1 text-sm text-gray-700 font-medium">{imgObj.name}</p>
+                )}
+              </div>
             ))}
           </div>
         ) : (
           <p>No store photos uploaded yet.</p>
         )}
       </div>
-      
-      {qrCodeUrl && (
-  <div className="text-center mt-6">
-    <h3 className="text-md font-semibold mb-2">Scan for this page:</h3>
-    <img src={qrCodeUrl} alt="QR Code" className="mx-auto h-40 w-40" />
-  </div>
-)}
-      {/* Image Modal with swipe */}
+
+      {/* Menu modal photo swipe */}
       {selectedIndex !== null && menu[selectedIndex]?.image && (
         <div
           onClick={() => setSelectedIndex(null)}
