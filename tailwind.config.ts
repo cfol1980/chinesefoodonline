@@ -1,14 +1,14 @@
 import type { Config } from 'tailwindcss';
 
-const config: Config = {
+/** @type {import('tailwindcss').Config} */
+module.exports = {
   content: [
-    './app/**/*.{js,ts,jsx,tsx}', // Include all App Router files
-    './components/**/*.{js,ts,jsx,tsx}', // Include components if added later
+    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/lib/**/*.{js,ts,jsx,tsx,mdx}", // optional if using Tailwind in lib
   ],
   theme: {
     extend: {},
   },
   plugins: [],
-};
-
-export default config;
+}
