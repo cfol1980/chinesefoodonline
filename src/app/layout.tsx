@@ -1,4 +1,4 @@
-import './globals.css';
+import "@/styles/globals.css"
 import Link from 'next/link';
 import { GoogleAnalytics } from '@next/third-parties/google';
 /*import ModalWrapper from './_components/ModalWrapper';*/
