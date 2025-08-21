@@ -15,7 +15,7 @@ export default function Supporter() {
   const [name, setName] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
-  const [street, setStreet] = useState<string>('');
+  const [address, setAddress] = useState<string>('');
   const [city, setCity] = useState<string>('');
   const [state, setState] = useState<string>('');
   const [zip, setZip] = useState<string>('');
@@ -78,7 +78,7 @@ export default function Supporter() {
             setName(data.name || '');
             setDescription(data.description || '');
             setPhone(data.phone || '');
-            setStreet(data.street || '');
+            setAddress(data.address || '');
             setCity(data.city || '');
             setState(data.state || '');
             setZip(data.zip || '');
@@ -104,7 +104,7 @@ export default function Supporter() {
   if (error) return <div className="p-4 text-red-600">Error: {error}</div>;
   if (!isValid) return <div>Loading...</div>;
 
-  const fullAddress = [street, city, state, zip].filter(Boolean).join(', ');
+  const fullAddress = [address, city, state, zip].filter(Boolean).join(', ');
 
   return (
     <div className="bg-gray-100 min-h-screen p-4">
