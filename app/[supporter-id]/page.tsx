@@ -15,7 +15,10 @@ export default function Supporter() {
   const [name, setName] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
-  const [location, setLocation] = useState<string>('');
+  const [street, setStreet] = useState<string>('');
+  const [city, setCity] = useState<string>('');
+  const [state, setState] = useState<string>('');
+  const [zip, setZip] = useState<string>('');
   const [businessHours, setBusinessHours] = useState("");
   const [qrCodeUrl, setQrCodeUrl] = useState("");
   const [menu, setMenu] = useState<{ name: string; image?: string }[]>([]);
@@ -75,7 +78,10 @@ export default function Supporter() {
             setName(data.name || '');
             setDescription(data.description || '');
             setPhone(data.phone || '');
-            setLocation(data.location || '');
+            setStreet(data.street || '');
+            setCity(data.city || '');
+            setState(data.state || '');
+            setZip(data.zip || '');
             setBusinessHours(data.businessHours || "");
             setQrCodeUrl(data.qrCodeUrl || "");
             setMenu(data.menu || []);
@@ -98,13 +104,15 @@ export default function Supporter() {
   if (error) return <div className="p-4 text-red-600">Error: {error}</div>;
   if (!isValid) return <div>Loading...</div>;
 
+  const fullAddress = [street, city, state, zip].filter(Boolean).join(', ');
+
   return (
     <div className="bg-gray-100 min-h-screen p-4">
       {/* Header */}
       <h1 className="text-2xl font-bold text-center mb-2">{name}</h1>
       <p className="text-center text-gray-600 mb-4">{description}</p>
 
-      {location && <p className="text-center">📍 {location}</p>}
+      {fullAddress && <p className="text-center">📍 {fullAddress}</p>}
       {phone && <p className="text-center">📞 {phone}</p>}
       {businessHours && <p className="text-center">🕒 {businessHours}</p>}
 
