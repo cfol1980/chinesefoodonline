@@ -29,6 +29,7 @@ interface RecItem {
 }
 
 interface ImgItem {
+  name: string;
   url: string;
   path: string;
 }
@@ -37,7 +38,10 @@ interface SupporterData {
   name?: string;
   description?: string;
   phone?: string;
-  location?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
   businessHours?: string;
   menu?: MenuItem[];
   recommendations?: RecItem[];
@@ -155,7 +159,10 @@ export default function SupporterDashboard() {
             <p><strong>Name:</strong> {supporterData.name}</p>
             <p><strong>Description:</strong> {supporterData.description}</p>
             <p><strong>Phone:</strong> {supporterData.phone}</p>
-            <p><strong>Location:</strong> {supporterData.location}</p>
+            <p><strong>Address:</strong> {supporterData.address}</p>
+            <p><strong>City:</strong> {supporterData.city}</p>
+            <p><strong>State:</strong> {supporterData.state}</p>
+            <p><strong>Zip Code:</strong> {supporterData.zipCode}</p>
             <p><strong>Business Hours:</strong> {supporterData.businessHours}</p>
           </div>
 
@@ -213,30 +220,28 @@ export default function SupporterDashboard() {
             </div>
           )}
 
-        {/* Store Images */}
-{supporterData.storeImages && supporterData.storeImages.length > 0 && (
-  <div className="mt-6">
-    <h2 className="text-xl font-semibold mb-2">Store Photos</h2>
-    {supporterData.storeImages.map((img: any, index) => (
-      <div key={index} className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded">
-        <div className="flex items-center gap-2">
-          {img.image && (
-            <img src={img.image} alt={img.name} className="h-12 w-12 object-cover rounded" />
+          {/* Store Images */}
+          {supporterData.storeImages && supporterData.storeImages.length > 0 && (
+            <div className="mt-6">
+              <h2 className="text-xl font-semibold mb-2">Store Photos</h2>
+              {supporterData.storeImages.map((img: any, index) => (
+                <div key={index} className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded">
+                  <div className="flex items-center gap-2">
+                    {img.url && (
+                      <img src={img.url} alt={img.name} className="h-12 w-12 object-cover rounded" />
+                    )}
+                    <span>{img.name}</span>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteStoreImage(img)}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
-          <span>{img.name}</span>
-        </div>
-        <button
-          onClick={() => handleDeleteStoreImage(img)}
-          className="text-red-600 hover:text-red-700"
-        >
-          Delete
-        </button>
-      </div>
-    ))}
-  </div>
-)}
-
-
         </div>
       ) : (
         <p>No supporter record associated with this account.</p>

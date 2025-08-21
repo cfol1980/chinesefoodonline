@@ -14,7 +14,10 @@ export default function EditSupporterPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [phone, setPhone] = useState("");
-  const [location, setLocation] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [zipCode, setZipCode] = useState("");
   const [businessHours, setBusinessHours] = useState("");
 
   const router = useRouter();
@@ -41,7 +44,10 @@ export default function EditSupporterPage() {
             setName(sup.name || "");
             setDescription(sup.description || "");
             setPhone(sup.phone || "");
-            setLocation(sup.location || "");
+            setAddress(sup.address || "");
+            setCity(sup.city || "");
+            setState(sup.state || "");
+            setZipCode(sup.zipCode || "");
             setBusinessHours(sup.businessHours || "");
           }
         }
@@ -60,7 +66,10 @@ export default function EditSupporterPage() {
         name,
         description,
         phone,
-        location,
+        address,
+        city,
+        state,
+        zipCode,
         businessHours,
       });
       alert("Profile updated!");
@@ -83,34 +92,96 @@ export default function EditSupporterPage() {
         {/* Name */}
         <div>
           <label className="block mb-1 font-semibold">Name</label>
-          <input type="text" className="w-full border px-2 py-1 rounded" value={name} onChange={(e) => setName(e.target.value)} required />
+          <input
+            type="text"
+            className="w-full border px-2 py-1 rounded"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
         </div>
 
         {/* Description */}
         <div>
           <label className="block mb-1 font-semibold">Description</label>
-          <textarea className="w-full border px-2 py-1 rounded" value={description} onChange={(e) => setDescription(e.target.value)} />
+          <textarea
+            className="w-full border px-2 py-1 rounded"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
         </div>
 
         {/* Phone */}
         <div>
           <label className="block mb-1 font-semibold">Phone</label>
-          <input type="text" className="w-full border px-2 py-1 rounded" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <input
+            type="text"
+            className="w-full border px-2 py-1 rounded"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
         </div>
 
-        {/* Location */}
+        {/* Address */}
         <div>
-          <label className="block mb-1 font-semibold">Location</label>
-          <input type="text" className="w-full border px-2 py-1 rounded" value={location} onChange={(e) => setLocation(e.target.value)} />
+          <label className="block mb-1 font-semibold">Street Address</label>
+          <input
+            type="text"
+            className="w-full border px-2 py-1 rounded"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+          />
+        </div>
+
+        {/* City */}
+        <div>
+          <label className="block mb-1 font-semibold">City</label>
+          <input
+            type="text"
+            className="w-full border px-2 py-1 rounded"
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+          />
+        </div>
+
+        {/* State */}
+        <div>
+          <label className="block mb-1 font-semibold">State</label>
+          <input
+            type="text"
+            className="w-full border px-2 py-1 rounded"
+            value={state}
+            onChange={(e) => setState(e.target.value)}
+          />
+        </div>
+
+        {/* Zip Code */}
+        <div>
+          <label className="block mb-1 font-semibold">Zip Code</label>
+          <input
+            type="text"
+            className="w-full border px-2 py-1 rounded"
+            value={zipCode}
+            onChange={(e) => setZipCode(e.target.value)}
+          />
         </div>
 
         {/* Business Hours */}
         <div>
           <label className="block mb-1 font-semibold">Business Hours</label>
-          <input type="text" className="w-full border px-2 py-1 rounded" value={businessHours} onChange={(e) => setBusinessHours(e.target.value)} placeholder="Mon-Fri 10am - 8pm" />
+          <input
+            type="text"
+            className="w-full border px-2 py-1 rounded"
+            value={businessHours}
+            onChange={(e) => setBusinessHours(e.target.value)}
+            placeholder="Mon-Fri 10am - 8pm"
+          />
         </div>
 
-        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+        <button
+          type="submit"
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
           Save
         </button>
       </form>
