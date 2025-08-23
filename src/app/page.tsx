@@ -4,13 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { db } from "../lib/firebase";
-import { collection, getDocs, limit, query } from "firebase/firestore";
+import { collection, getDocs, limit, query, orderBy } from "firebase/firestore";
 
 interface Supporter {
   id: string;
   name: string;
   logo: string;
   description?: string;
+  priority?: number;
 }
 
 export default function Home() {
@@ -19,7 +20,12 @@ export default function Home() {
   useEffect(() => {
     const fetchSupporters = async () => {
       try {
-        const q = query(collection(db, "supporters"), limit(6));
+        // Order supporters by priority (higher first) and limit to 6
+        const q = query(
+          collection(db, "supporters"),
+          orderBy("priority", "desc"),
+          limit(6)
+        );
         const snapshot = await getDocs(q);
         const data = snapshot.docs.map(doc => ({
           id: doc.id,
