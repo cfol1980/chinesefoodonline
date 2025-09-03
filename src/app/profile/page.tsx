@@ -5,8 +5,8 @@ import { auth, db } from '@/lib/firebase';
 import {
   doc,
   getDoc,
-  updateDoc,
   setDoc,
+  updateDoc,
   serverTimestamp,
 } from 'firebase/firestore';
 import { onAuthStateChanged, User } from 'firebase/auth';
@@ -25,9 +25,11 @@ export default function ProfilePage() {
       if (currentUser) {
         const ref = doc(db, 'users', currentUser.uid);
         const snap = await getDoc(ref);
+
         if (snap.exists()) {
           setProfile(snap.data());
         } else {
+          // Create default profile
           const newProfile = {
             email: currentUser.email,
             displayName: currentUser.displayName || '',
@@ -36,6 +38,7 @@ export default function ProfilePage() {
             authProvider: currentUser.providerData[0]?.providerId || 'unknown',
             city: '',
             role: 'user',
+            ownedSupportIds: [], // default empty
           };
           await setDoc(ref, newProfile);
           setProfile(newProfile);
@@ -54,12 +57,23 @@ export default function ProfilePage() {
   };
 
   const handleSave = async () => {
-    if (!user) return;
+    if (!user || !profile) return;
     setSaving(true);
+
     try {
       const ref = doc(db, 'users', user.uid);
-      const { role, ...updates } = profile; // exclude role
+
+      // Ensure role + ownedSupportIds are preserved for Firestore rules
+      const updates = {
+        displayName: profile.displayName,
+        name: profile.name,
+        city: profile.city,
+        role: profile.role || 'user',
+        ownedSupportIds: profile.ownedSupportIds || [],
+      };
+
       await updateDoc(ref, updates);
+
       alert('Profile updated successfully!');
     } catch (err) {
       console.error('Error updating profile:', err);
@@ -74,7 +88,11 @@ export default function ProfilePage() {
   if (!user) {
     return (
       <div className="p-6">
-        Please <a href="/signin" className="text-blue-600 underline">sign in</a> to view your profile.
+        Please{' '}
+        <a href="/signin" className="text-blue-600 underline">
+          sign in
+        </a>{' '}
+        to view your profile.
       </div>
     );
   }
@@ -87,7 +105,12 @@ export default function ProfilePage() {
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium">Email</label>
-          <input type="email" value={profile.email} disabled className="w-full p-2 border rounded" />
+          <input
+            type="email"
+            value={profile.email}
+            disabled
+            className="w-full p-2 border rounded"
+          />
         </div>
         <div>
           <label className="block text-sm font-medium">Display Name</label>
