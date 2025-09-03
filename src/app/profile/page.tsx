@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
 import {
   doc,
@@ -10,29 +9,31 @@ import {
   setDoc,
   serverTimestamp,
 } from 'firebase/firestore';
-import { useRouter } from 'next/navigation';
+import { onAuthStateChanged, User } from 'firebase/auth';
 
 export default function ProfilePage() {
-  const [user, loading] = useAuthState(auth);
-  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      if (user) {
-        const ref = doc(db, 'users', user.uid);
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+
+      if (currentUser) {
+        const ref = doc(db, 'users', currentUser.uid);
         const snap = await getDoc(ref);
         if (snap.exists()) {
           setProfile(snap.data());
         } else {
-          // Create profile if not exists
           const newProfile = {
-            email: user.email,
-            displayName: user.displayName || '',
+            email: currentUser.email,
+            displayName: currentUser.displayName || '',
             name: '',
             createdAt: serverTimestamp(),
-            authProvider: user.providerData[0]?.providerId || 'unknown',
+            authProvider: currentUser.providerData[0]?.providerId || 'unknown',
             city: '',
             role: 'user',
           };
@@ -40,9 +41,10 @@ export default function ProfilePage() {
           setProfile(newProfile);
         }
       }
-    };
-    fetchProfile();
-  }, [user]);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setProfile({
@@ -56,10 +58,7 @@ export default function ProfilePage() {
     setSaving(true);
     try {
       const ref = doc(db, 'users', user.uid);
-
-      // Prevent overwriting role — only update allowed fields
-      const { role, ...updates } = profile;
-
+      const { role, ...updates } = profile; // exclude role
       await updateDoc(ref, updates);
       alert('Profile updated successfully!');
     } catch (err) {
@@ -88,12 +87,7 @@ export default function ProfilePage() {
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium">Email</label>
-          <input
-            type="email"
-            value={profile.email}
-            disabled
-            className="w-full p-2 border rounded"
-          />
+          <input type="email" value={profile.email} disabled className="w-full p-2 border rounded" />
         </div>
         <div>
           <label className="block text-sm font-medium">Display Name</label>
