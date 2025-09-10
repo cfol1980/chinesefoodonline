@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
 import { db } from '../../lib/firebase';
 import { doc, getDoc, collection } from 'firebase/firestore';
+import Link from 'next/link'; // Import the Link component
 
 export default function Supporter() {
   const params = useParams();
@@ -26,6 +27,9 @@ export default function Supporter() {
   const [storeImages, setStoreImages] = useState<
     { name: string; image: string; path: string }[]
   >([]);
+  
+  // New state for online ordering
+  const [isOrderingEnabled, setIsOrderingEnabled] = useState<boolean>(false);
 
   // Modal state for menu images
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -87,6 +91,8 @@ export default function Supporter() {
             setMenu(data.menu || []);
             setRecommendations(data.recommendations || []);
             setStoreImages(data.storeImages || []);
+            // Set the ordering status, default to false if not present
+            setIsOrderingEnabled(data.isOrderingEnabled || false);
           } else {
             setError('Supporter not found.');
           }
@@ -115,6 +121,18 @@ export default function Supporter() {
       {fullAddress && <p className="text-center">📍 {fullAddress}</p>}
       {phone && <p className="text-center">📞 {phone}</p>}
       {businessHours && <p className="text-center">🕒 {businessHours}</p>}
+      
+      {/* --- NEW: Online Order Button --- */}
+      {isOrderingEnabled && (
+        <div className="text-center my-6">
+          <Link
+            href={`/${supporterId}/menu`}
+            className="bg-green-600 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-green-700 transition-colors"
+          >
+            Order Online 🥡
+          </Link>
+        </div>
+      )}
 
       {/* QR Code */}
       {qrCodeUrl && (
