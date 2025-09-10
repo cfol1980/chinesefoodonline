@@ -46,6 +46,7 @@ interface SupporterData {
   menu?: MenuItem[];
   recommendations?: RecItem[];
   storeImages?: ImgItem[];
+  isOrderingEnabled?: boolean; // Add isOrderingEnabled to the interface
 }
 
 export default function SupporterDashboard() {
@@ -164,35 +165,52 @@ export default function SupporterDashboard() {
             <p><strong>State:</strong> {supporterData.state}</p>
             <p><strong>Zip Code:</strong> {supporterData.zipCode}</p>
             <p><strong>Business Hours:</strong> {supporterData.businessHours}</p>
+            {/* --- NEW: Online Ordering Status --- */}
+            <p>
+              <strong>Online Ordering Status:</strong>
+              <span className={supporterData.isOrderingEnabled ? 'text-green-600 font-bold ml-2' : 'text-red-600 font-bold ml-2'}>
+                {supporterData.isOrderingEnabled ? 'Enabled' : 'Disabled'}
+              </span>
+            </p>
           </div>
 
-          <Link
-            href={`/supporter-dashboard/edit`}
-            className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
-            Edit Business Details
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={`/supporter-dashboard/edit`}
+              className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            >
+              Edit Business Details
+            </Link>
 
-          <Link
-            href={`/supporter-dashboard/add-menu`}
-            className="inline-block bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-          >
-            + Add Menu Item
-          </Link>
+            {/* --- NEW: Manage Orders Link --- */}
+            <Link
+              href={`/supporter-dashboard/orders`}
+              className="inline-block bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600"
+            >
+              Manage Online Orders
+            </Link>
 
-          <Link
-            href={`/supporter-dashboard/add-recommendation`}
-            className="inline-block bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
-          >
-            + Add Recommended Dish
-          </Link>
+            <Link
+              href={`/supporter-dashboard/add-menu`}
+              className="inline-block bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+            >
+              + Add Menu Item
+            </Link>
 
-          <Link
-            href={`/supporter-dashboard/add-store-photo`}
-            className="inline-block bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
-          >
-            + Add Store Photo
-          </Link>
+            <Link
+              href={`/supporter-dashboard/add-recommendation`}
+              className="inline-block bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+            >
+              + Add Recommended Dish
+            </Link>
+
+            <Link
+              href={`/supporter-dashboard/add-store-photo`}
+              className="inline-block bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
+            >
+              + Add Store Photo
+            </Link>
+          </div>
 
           {/* Menu items */}
           {supporterData.menu && supporterData.menu.length > 0 && (
