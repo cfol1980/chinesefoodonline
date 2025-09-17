@@ -120,12 +120,73 @@ export default function AdminEditSupporter() {
 
   // -------- QR Code Handler -------
   const generateQr = async () => {
+    // 1. Check if a logo exists
+    if (!data.logo) {
+      alert("Please ensure a logo is saved for the supporter before generating a QR code.");
+      return;
+    }
+
     try {
       const url = `https://chinesefoodonline.com/${slug}`;
-      const dataUrl = await QRCode.toDataURL(url);
-      const blob = await (await fetch(dataUrl)).blob();
+      const qrCodeSize = 256; // Define a size for the QR code canvas
+
+      // Use a canvas to merge the QR code and the logo
+      const canvas = document.createElement('canvas');
+      canvas.width = qrCodeSize;
+      canvas.height = qrCodeSize;
+      const context = canvas.getContext('2d');
+      if (!context) {
+          throw new Error("Could not get canvas context");
+      }
+
+      // 2. Draw QR code to canvas with high error correction
+      await QRCode.toCanvas(canvas, url, {
+        width: qrCodeSize,
+        margin: 1,
+        errorCorrectionLevel: 'H' // High correction is needed for logo overlay
+      });
+
+      // 3. Load the supporter's logo
+      const logoImage = new Image();
+      logoImage.crossOrigin = "Anonymous"; // Required for loading images from Firebase Storage
+
+      // Wrap image loading in a Promise to handle the async operation
+      const dataUrlWithLogo = await new Promise((resolve, reject) => {
+        logoImage.onload = () => {
+          const logoSize = qrCodeSize * 0.25; // Logo will be 25% of the QR code's size
+          const logoX = (qrCodeSize - logoSize) / 2;
+          const logoY = (qrCodeSize - logoSize) / 2;
+          const padding = 4; // White padding around the logo
+
+          // 4. Add a white background behind the logo for better visibility
+          context.fillStyle = '#ffffff';
+          context.fillRect(
+              logoX - padding,
+              logoY - padding,
+              logoSize + padding * 2,
+              logoSize + padding * 2
+          );
+
+          // 5. Draw the logo on top of the QR code
+          context.drawImage(logoImage, logoX, logoY, logoSize, logoSize);
+
+          // 6. Get the final image as a data URL and resolve the promise
+          resolve(canvas.toDataURL('image/png'));
+        };
+
+        logoImage.onerror = (err) => {
+          reject(new Error("Failed to load logo image."));
+        };
+
+        // Start loading the image from the supporter's logo URL
+        logoImage.src = data.logo;
+      });
+
+      // 7. Convert data URL to blob and upload to Firebase
+      const blob = await (await fetch(dataUrlWithLogo as string)).blob();
       const path = `qrimages/${slug}/qrcode.png`;
 
+      // Delete old QR if it exists
       if (data.qrCodePath) {
         try {
           await deleteObject(storageRef(storage, data.qrCodePath));
@@ -138,16 +199,18 @@ export default function AdminEditSupporter() {
       await uploadBytes(sRef, blob);
       const downloadUrl = await getDownloadURL(sRef);
 
+      // 8. Update Firestore with new QR code URL and path
       await updateDoc(doc(db, "supporters", slug), {
         qrCodeUrl: downloadUrl,
         qrCodePath: path,
       });
 
       setData({ ...data, qrCodeUrl: downloadUrl, qrCodePath: path });
-      alert("QR Code generated!");
+      alert("QR Code with logo generated!");
+
     } catch (err) {
       console.error("QR generation error:", err);
-      alert("Failed to generate QR.");
+      alert("Failed to generate QR code. Check if the logo URL is valid and accessible.");
     }
   };
   // ----------------------------------
