@@ -7,15 +7,17 @@ import {
   signInWithPopup,
   signOut,
   onAuthStateChanged,
+  User,
 } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function AccountPage() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   const handleLogin = async () => {
     const provider = new GoogleAuthProvider();
@@ -26,30 +28,42 @@ export default function AccountPage() {
     await signOut(auth);
   };
 
-  // Listen for auth and get role
+  // Listen for auth state changes and manage user document
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
-        const ref = doc(db, "users", firebaseUser.uid);
-        const snap = await getDoc(ref);
-        if (snap.exists()) {
-          setRole(snap.data().role);
+        const userRef = doc(db, "users", firebaseUser.uid);
+        const userSnap = await getDoc(userRef);
+
+        if (userSnap.exists()) {
+          // User document already exists, just get their role
+          setRole(userSnap.data().role);
         } else {
-          // create doc for first-time user
-   await setDoc(doc(db, "users", firebaseUser.uid), {
-    email: firebaseUser.email,
-    role: "user"
-   });
-            // Default role if no doc found
-          setRole("user");
+          // **NEW**: Create user document with the full schema for first-time users
+          const newUserProfile = {
+            email: firebaseUser.email,
+            name: firebaseUser.displayName || "",
+            displayName: firebaseUser.displayName || "",
+            photoURL: firebaseUser.photoURL || "",
+            role: "user", // Default role
+            city: "",
+            state: "",
+            zip: "",
+            country: "",
+            phone: "",
+            bio: "",
+            ownedSupporterId: [], // Use an array in case a user can own multiple
+            createdAt: serverTimestamp(),
+          };
+          await setDoc(userRef, newUserProfile);
+          setRole("user"); // Set role for the current session
         }
-        setLoading(false);
       } else {
         setUser(null);
         setRole(null);
-        setLoading(false);
       }
+      setLoading(false);
     });
     return () => unsubscribe();
   }, []);
@@ -58,14 +72,15 @@ export default function AccountPage() {
     return <div className="p-6 text-center">Loading...</div>;
   }
 
-  // IF NOT LOGGED IN
+  // --- RENDER IF NOT LOGGED IN ---
   if (!user) {
     return (
       <div className="p-6 text-center">
-        <h1 className="text-2xl font-bold mb-4">Welcome to Your Account</h1>
+        <h1 className="text-2xl font-bold mb-4">Welcome</h1>
+        <p className="mb-6">Please sign in to manage your account.</p>
         <button
           onClick={handleLogin}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
         >
           Sign in with Google
         </button>
@@ -73,48 +88,48 @@ export default function AccountPage() {
     );
   }
 
-  // IF LOGGED IN
+  // --- RENDER IF LOGGED IN ---
   return (
-    <div className="p-6">
+    <div className="p-6 max-w-lg mx-auto">
       <h1 className="text-2xl font-bold mb-4">Account Overview</h1>
-      <p className="mb-2">Logged in as: {user.email}</p>
-      <p className="mb-4">Role: {role}</p>
-
-      {role === "admin" && (
-        <Link
-          href="/admin"
-          className="inline-block bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 mb-4"
-        >
-          Go to Admin Panel
+      <div className="flex items-center mb-6">
+        {user.photoURL && (
+          <img src={user.photoURL} alt="Profile" className="w-16 h-16 rounded-full mr-4" />
+        )}
+        <div>
+          <p className="font-semibold">{user.displayName}</p>
+          <p className="text-gray-600">{user.email}</p>
+          <p className="text-sm capitalize text-gray-500 mt-1">Role: {role}</p>
+        </div>
+      </div>
+      
+      <div className="space-y-3 mb-6">
+        {/* Link to view/edit profile */}
+        <Link href="/profile" className="block w-full text-center bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+          Edit My Profile
         </Link>
-      )}
-
-      {role === "supporter" && (
-        <Link
-        href={`/supporter-dashboard`} // or a custom page just for the business owner
-          className="inline-block bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 mb-4"
-        >
-          Manage My Supporter Profile
-        </Link>
-      )}
-
-      {role === "contributor" && (
-        <Link
-          href="/contributor"
-          className="inline-block bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 mb-4"
-        >
-          Go to Contributor Tools
-        </Link>
-      )}
-
-      {/* User-only area (optional) */}
-      {role === "user" && (
-        <p className="mb-4">No special privileges yet — enjoy exploring!</p>
-      )}
+        
+        {/* Role-specific links */}
+        {role === "admin" && (
+          <Link href="/admin" className="block w-full text-center bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+            Go to Admin Panel
+          </Link>
+        )}
+        {role === "supporter" && (
+          <Link href={`/supporter-dashboard`} className="block w-full text-center bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">
+            Manage My Supporter Profile
+          </Link>
+        )}
+        {role === "contributor" && (
+          <Link href="/contributor" className="block w-full text-center bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
+            Go to Contributor Tools
+          </Link>
+        )}
+      </div>
 
       <button
         onClick={handleLogout}
-        className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+        className="w-full bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
       >
         Sign Out
       </button>
