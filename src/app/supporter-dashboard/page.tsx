@@ -8,6 +8,7 @@ import {
   getDoc,
   updateDoc,
   arrayRemove,
+  deleteField,
 } from "firebase/firestore";
 import {
   ref as storageRef,
@@ -15,6 +16,7 @@ import {
 } from "firebase/storage";
 import Link from "next/link";
 
+// NEW: Interfaces for Promotion and updated SupporterData
 interface MenuItem {
   name: string;
   image?: string;
@@ -34,6 +36,16 @@ interface ImgItem {
   path: string;
 }
 
+interface PromotionData {
+  promoteStatus: boolean;
+  promoteName: string;
+  promoteCode: string;
+  promotePictureURL: string;
+  promoteCreateDate: string;
+  promoteExpireDate: string;
+  promoteDiscountRate: number;
+}
+
 interface SupporterData {
   name?: string;
   description?: string;
@@ -47,6 +59,7 @@ interface SupporterData {
   recommendations?: RecItem[];
   storeImages?: ImgItem[];
   isOrderingEnabled?: boolean;
+  promotion?: PromotionData; // Add promotion to the interface
 }
 
 export default function SupporterDashboard() {
@@ -140,6 +153,27 @@ export default function SupporterDashboard() {
     }
   };
 
+  const handleDeletePromotion = async () => {
+    if (!slug || !supporterData?.promotion) return;
+
+    if (window.confirm("Are you sure you want to delete this promotion?")) {
+      try {
+        if (supporterData.promotion.promotePictureURL) {
+          const imageRef = storageRef(storage, `promotion/${slug}/${supporterData.promotion.promotePictureURL.split('/').pop()}`);
+          await deleteObject(imageRef);
+        }
+        await updateDoc(doc(db, "supporters", slug), {
+          promotion: deleteField(),
+        });
+        alert("Promotion deleted successfully!");
+        setSupporterData(prev => prev ? { ...prev, promotion: undefined } : null);
+      } catch (err) {
+        console.error("Error deleting promotion:", err);
+        alert("Failed to delete promotion.");
+      }
+    }
+  };
+
   if (loading) return <div className="p-4">Loading...</div>;
   if (!user) return <div className="p-4">Please log in to continue.</div>;
   if (role !== "supporter") {
@@ -208,14 +242,52 @@ export default function SupporterDashboard() {
             >
               + Add Store Photo
             </Link>
-
-            <Link
-              href={`/supporter-dashboard/add-promotion`}
-              className="inline-block bg-pink-600 text-white px-4 py-2 rounded hover:bg-pink-700"
-            >
-              + Add Promotion
-            </Link>
+            
+            {/* Conditional Add Promotion Button */}
+            {!supporterData.promotion && (
+              <Link
+                href={`/supporter-dashboard/add-promotion`}
+                className="inline-block bg-pink-600 text-white px-4 py-2 rounded hover:bg-pink-700"
+              >
+                + Add Promotion
+              </Link>
+            )}
           </div>
+          
+          {/* NEW: Promotion Management Section */}
+          {supporterData.promotion && (
+            <div className="mt-6">
+              <h2 className="text-xl font-semibold mb-2">Current Promotion</h2>
+              <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 shadow-sm space-y-2">
+                <p><strong>Name:</strong> {supporterData.promotion.promoteName}</p>
+                <p><strong>Code:</strong> {supporterData.promotion.promoteCode}</p>
+                <p>
+                  <strong>Status:</strong>
+                  <span className={`ml-1 font-bold ${supporterData.promotion.promoteStatus ? 'text-green-600' : 'text-red-600'}`}>
+                    {supporterData.promotion.promoteStatus ? 'Active' : 'Inactive'}
+                  </span>
+                </p>
+                <p><strong>Dates:</strong> {new Date(supporterData.promotion.promoteCreateDate).toLocaleDateString()} - {new Date(supporterData.promotion.promoteExpireDate).toLocaleDateString()}</p>
+                {supporterData.promotion.promotePictureURL && (
+                  <img src={supporterData.promotion.promotePictureURL} alt="Promotion" className="w-32 h-32 object-cover rounded-md" />
+                )}
+                <div className="flex gap-2 mt-4">
+                  <Link
+                    href={`/supporter-dashboard/add-promotion`}
+                    className="inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                  >
+                    Edit Promotion
+                  </Link>
+                  <button
+                    onClick={handleDeletePromotion}
+                    className="inline-block bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+                  >
+                    Delete Promotion
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Menu items */}
           {supporterData.menu && supporterData.menu.length > 0 && (
@@ -224,7 +296,15 @@ export default function SupporterDashboard() {
               {supporterData.menu.map((item, index) => (
                 <div key={index} className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded">
                   <span>{item.name}</span>
-                  <button onClick={() => handleDeleteMenu(item)} className="text-red-600 hover:text-red-700">Delete</button>
+                  <div className="flex gap-2">
+                    <Link
+                      href={`/supporter-dashboard/edit-menu-item/${item.name}`} // Placeholder for future edit page
+                      className="text-blue-600 hover:text-blue-700"
+                    >
+                      Edit
+                    </Link>
+                    <button onClick={() => handleDeleteMenu(item)} className="text-red-600 hover:text-red-700">Delete</button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -237,7 +317,15 @@ export default function SupporterDashboard() {
               {supporterData.recommendations.map((rec, index) => (
                 <div key={index} className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded">
                   <span>{rec.name}</span>
-                  <button onClick={() => handleDeleteRecommendation(rec)} className="text-red-600 hover:text-red-700">Delete</button>
+                  <div className="flex gap-2">
+                    <Link
+                      href={`/supporter-dashboard/edit-recommendation/${rec.name}`} // Placeholder for future edit page
+                      className="text-blue-600 hover:text-blue-700"
+                    >
+                      Edit
+                    </Link>
+                    <button onClick={() => handleDeleteRecommendation(rec)} className="text-red-600 hover:text-red-700">Delete</button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -255,12 +343,20 @@ export default function SupporterDashboard() {
                     )}
                     <span>{img.name}</span>
                   </div>
-                  <button
-                    onClick={() => handleDeleteStoreImage(img)}
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    Delete
-                  </button>
+                  <div className="flex gap-2">
+                    <Link
+                      href={`/supporter-dashboard/edit-store-photo/${img.name}`} // Placeholder for future edit page
+                      className="text-blue-600 hover:text-blue-700"
+                    >
+                      Edit
+                    </Link>
+                    <button
+                      onClick={() => handleDeleteStoreImage(img)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
