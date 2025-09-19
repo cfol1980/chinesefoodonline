@@ -66,14 +66,14 @@ export default function ProfilePage() {
       
       // **UPDATED**: Include all editable fields in the update object
       const updates = {
-        name: profile.name,
-        displayName: profile.displayName,
-        city: profile.city,
-        state: profile.state,
-        zip: profile.zip,
-        country: profile.country,
-        phone: profile.phone,
-        bio: profile.bio,
+        name: profile.name ?? "",
+        displayName: profile.displayName ?? "",
+        city: profile.city ?? "",
+        state: profile.state ?? "",
+        zip: profile.zip ?? "",
+        country: profile.country ?? "",
+        phone: profile.phone ?? "",
+        bio: profile.bio ?? "",
       };
 
       await updateDoc(userRef, updates);
