@@ -46,7 +46,7 @@ interface SupporterData {
   menu?: MenuItem[];
   recommendations?: RecItem[];
   storeImages?: ImgItem[];
-  isOrderingEnabled?: boolean; // Add isOrderingEnabled to the interface
+  isOrderingEnabled?: boolean;
 }
 
 export default function SupporterDashboard() {
@@ -165,7 +165,6 @@ export default function SupporterDashboard() {
             <p><strong>State:</strong> {supporterData.state}</p>
             <p><strong>Zip Code:</strong> {supporterData.zipCode}</p>
             <p><strong>Business Hours:</strong> {supporterData.businessHours}</p>
-            {/* --- NEW: Online Ordering Status --- */}
             <p>
               <strong>Online Ordering Status:</strong>
               <span className={supporterData.isOrderingEnabled ? 'text-green-600 font-bold ml-2' : 'text-red-600 font-bold ml-2'}>
@@ -182,7 +181,6 @@ export default function SupporterDashboard() {
               Edit Business Details
             </Link>
 
-            {/* --- NEW: Manage Orders Link --- */}
             <Link
               href={`/supporter-dashboard/orders`}
               className="inline-block bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600"
@@ -209,6 +207,14 @@ export default function SupporterDashboard() {
               className="inline-block bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
             >
               + Add Store Photo
+            </Link>
+
+            {/* NEW: Promote Button */}
+            <Link
+              href={`/supporter-dashboard/promote`}
+              className="inline-block bg-pink-600 text-white px-4 py-2 rounded hover:bg-pink-700"
+            >
+              Promote
             </Link>
           </div>
 
