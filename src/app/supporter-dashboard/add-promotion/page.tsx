@@ -91,7 +91,8 @@ export default function AddPromotionPage() {
     try {
       let imageUrl = promotionData.promotePictureURL;
       if (file) {
-        const imagePath = `supporters/${slug}/promotion/${file.name}`;
+        // CORRECTED PATH: Aligned with Firebase Storage rule
+        const imagePath = `promotion/${slug}/${file.name}`;
         const imageRef = storageRef(storage, imagePath);
         await uploadBytes(imageRef, file);
         imageUrl = await getDownloadURL(imageRef);
