@@ -290,6 +290,12 @@ export default function SupporterDashboard() {
           {supporterData.menu && supporterData.menu.length > 0 && (
             <div className="mt-6">
               <h2 className="text-xl font-semibold mb-2">Menu Items</h2>
+              <Link
+                href={`/supporter-dashboard/reorder-menu`}
+                className="inline-block bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 mb-4"
+              >
+                Reorder Menu
+              </Link>
               {supporterData.menu.map((item, index) => (
                 <div key={index} className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded">
                   <span>{item.name}</span>
@@ -311,6 +317,12 @@ export default function SupporterDashboard() {
           {supporterData.recommendations && supporterData.recommendations.length > 0 && (
             <div className="mt-6">
               <h2 className="text-xl font-semibold mb-2">Recommended Dishes</h2>
+              <Link
+                href={`/supporter-dashboard/reorder-recommendations`}
+                className="inline-block bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 mb-4"
+              >
+                Reorder Recommended Dishes
+              </Link>
               {supporterData.recommendations.map((rec, index) => (
                 <div key={index} className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded">
                   <span>{rec.name}</span>
@@ -332,6 +344,12 @@ export default function SupporterDashboard() {
           {supporterData.storeImages && supporterData.storeImages.length > 0 && (
             <div className="mt-6">
               <h2 className="text-xl font-semibold mb-2">Store Photos</h2>
+              <Link
+                href={`/supporter-dashboard/reorder-store-photos`}
+                className="inline-block bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 mb-4"
+              >
+                Reorder Store Photos
+              </Link>
               {supporterData.storeImages.map((img: any, index) => (
                 <div key={index} className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded">
                   <div className="flex items-center gap-2">
