@@ -9,8 +9,8 @@ import { useRouter, useParams } from "next/navigation";
 
 interface ImgItem {
   name: string;
-  url: string;
-  path: string;
+  url: string | null; // Use null to be explicit about potentially no URL
+  path: string | null; // Use null to be explicit about potentially no path
 }
 
 export default function EditStorePhotoPage() {
@@ -56,8 +56,9 @@ export default function EditStorePhotoPage() {
         if (foundPhoto) {
           setCurrentPhoto({
             name: foundPhoto.name,
-            url: foundPhoto.url,
-            path: foundPhoto.path,
+            // Explicitly handle image and path to avoid undefined
+            url: foundPhoto.url || null,
+            path: foundPhoto.path || null,
           });
         }
       }
@@ -77,6 +78,7 @@ export default function EditStorePhotoPage() {
       if (!supporterDoc.exists()) throw new Error("Supporter document not found.");
       
       const existingPhotoArray: ImgItem[] = supporterDoc.data().storeImages || [];
+      
       let newImageURL = currentPhoto.url;
       let newImagePath = currentPhoto.path;
 
@@ -91,8 +93,9 @@ export default function EditStorePhotoPage() {
       
       const updatedPhoto = {
         name: currentPhoto.name,
-        url: newImageURL,
-        path: newImagePath
+        // Convert any potential undefined to null before updating
+        url: newImageURL || null,
+        path: newImagePath || null
       };
       
       const newPhotoArray = existingPhotoArray.map(item => {
