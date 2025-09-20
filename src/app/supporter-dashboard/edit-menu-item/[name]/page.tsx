@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { auth, db, storage } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc, updateDoc, arrayRemove, arrayUnion } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { useRouter, useParams } from "next/navigation";
 
@@ -16,12 +16,13 @@ interface MenuItem {
 
 export default function EditMenuItemPage() {
   const router = useRouter();
-  const { name: itemNameParam } = useParams(); // Get the item name from the URL slug
+  const { name: itemNameParam } = useParams(); // Get the URL slug
 
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState<string | null>(null);
   const [slug, setSlug] = useState<string | null>(null);
   const [currentMenuItem, setCurrentMenuItem] = useState<MenuItem | null>(null);
+  const [originalName, setOriginalName] = useState<string | null>(null); // Store the original name for lookup
   const [newFile, setNewFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,12 +45,14 @@ export default function EditMenuItemPage() {
       const supporterSlug = userDoc.data().ownedSupporterId;
       setSlug(supporterSlug);
 
+      const decodedName = decodeURIComponent(itemNameParam as string);
+      setOriginalName(decodedName);
+
       const supporterDoc = await getDoc(doc(db, "supporters", supporterSlug));
       if (supporterDoc.exists()) {
         const data = supporterDoc.data();
         const menuItems = data.menu || [];
-        // Find the menu item to be edited using the URL slug
-        const foundItem = menuItems.find((item: MenuItem) => item.name === itemNameParam);
+        const foundItem = menuItems.find((item: MenuItem) => item.name === decodedName);
         if (foundItem) {
           setCurrentMenuItem(foundItem);
         }
@@ -62,12 +65,19 @@ export default function EditMenuItemPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!slug || !currentMenuItem || isSubmitting) return;
+    if (!slug || !currentMenuItem || !originalName || isSubmitting) return;
 
     setIsSubmitting(true);
 
     try {
       const supporterRef = doc(db, "supporters", slug);
+      const supporterDoc = await getDoc(supporterRef);
+      if (!supporterDoc.exists()) {
+        throw new Error("Supporter document not found.");
+      }
+      
+      const existingMenuArray: MenuItem[] = supporterDoc.data().menu || [];
+
       let newImageURL = currentMenuItem.image;
       let newImagePath = currentMenuItem.path;
 
@@ -86,18 +96,24 @@ export default function EditMenuItemPage() {
         newImageURL = await getDownloadURL(imageRef);
       }
       
+      // Create the updated item object
       const updatedItem = {
         name: currentMenuItem.name,
         image: newImageURL,
         path: newImagePath
       };
       
-      // Remove the old item and add the updated one
-      await updateDoc(supporterRef, {
-        menu: arrayRemove(currentMenuItem),
+      // Map through the existing array to find and replace the item
+      const newMenuArray = existingMenuArray.map(item => {
+        if (item.name === originalName) {
+          return updatedItem;
+        }
+        return item;
       });
+
+      // Update the entire menu array in Firestore
       await updateDoc(supporterRef, {
-        menu: arrayUnion(updatedItem),
+        menu: newMenuArray,
       });
 
       alert("Menu item updated successfully!");

@@ -16,7 +16,6 @@ import {
 } from "firebase/storage";
 import Link from "next/link";
 
-// NEW: Interfaces for Promotion and updated SupporterData
 interface MenuItem {
   name: string;
   image?: string;
@@ -59,7 +58,7 @@ interface SupporterData {
   recommendations?: RecItem[];
   storeImages?: ImgItem[];
   isOrderingEnabled?: boolean;
-  promotion?: PromotionData; // Add promotion to the interface
+  promotion?: PromotionData;
 }
 
 export default function SupporterDashboard() {
@@ -243,7 +242,6 @@ export default function SupporterDashboard() {
               + Add Store Photo
             </Link>
             
-            {/* Conditional Add Promotion Button */}
             {!supporterData.promotion && (
               <Link
                 href={`/supporter-dashboard/add-promotion`}
@@ -254,7 +252,6 @@ export default function SupporterDashboard() {
             )}
           </div>
           
-          {/* NEW: Promotion Management Section */}
           {supporterData.promotion && (
             <div className="mt-6">
               <h2 className="text-xl font-semibold mb-2">Current Promotion</h2>
@@ -298,7 +295,7 @@ export default function SupporterDashboard() {
                   <span>{item.name}</span>
                   <div className="flex gap-2">
                     <Link
-                      href={`/supporter-dashboard/edit-menu-item/${item.name}`} // Placeholder for future edit page
+                      href={`/supporter-dashboard/edit-menu-item/${encodeURIComponent(item.name)}`}
                       className="text-blue-600 hover:text-blue-700"
                     >
                       Edit
@@ -319,7 +316,7 @@ export default function SupporterDashboard() {
                   <span>{rec.name}</span>
                   <div className="flex gap-2">
                     <Link
-                      href={`/supporter-dashboard/edit-recommendation/${rec.name}`} // Placeholder for future edit page
+                      href={`/supporter-dashboard/edit-recommendation/${encodeURIComponent(rec.name)}`}
                       className="text-blue-600 hover:text-blue-700"
                     >
                       Edit
@@ -345,7 +342,7 @@ export default function SupporterDashboard() {
                   </div>
                   <div className="flex gap-2">
                     <Link
-                      href={`/supporter-dashboard/edit-store-photo/${img.name}`} // Placeholder for future edit page
+                      href={`/supporter-dashboard/edit-store-photo/${encodeURIComponent(img.name)}`}
                       className="text-blue-600 hover:text-blue-700"
                     >
                       Edit
