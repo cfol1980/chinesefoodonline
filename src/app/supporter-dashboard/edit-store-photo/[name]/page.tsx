@@ -9,8 +9,8 @@ import { useRouter, useParams } from "next/navigation";
 
 interface ImgItem {
   name: string;
-  url: string | null; // Use null to be explicit about potentially no URL
-  path: string | null; // Use null to be explicit about potentially no path
+  image: string | null; // Corrected field name to 'image'
+  path: string | null;
 }
 
 export default function EditStorePhotoPage() {
@@ -52,12 +52,11 @@ export default function EditStorePhotoPage() {
       if (supporterDoc.exists()) {
         const data = supporterDoc.data();
         const photoItems = data.storeImages || [];
-        const foundPhoto = photoItems.find((item: ImgItem) => item.name === decodedName);
+        const foundPhoto = photoItems.find((item: any) => item.name === decodedName); // Use 'any' to handle legacy data
         if (foundPhoto) {
           setCurrentPhoto({
             name: foundPhoto.name,
-            // Explicitly handle image and path to avoid undefined
-            url: foundPhoto.url || null,
+            image: foundPhoto.image || foundPhoto.url || null, // Handle both 'image' and legacy 'url'
             path: foundPhoto.path || null,
           });
         }
@@ -79,7 +78,7 @@ export default function EditStorePhotoPage() {
       
       const existingPhotoArray: ImgItem[] = supporterDoc.data().storeImages || [];
       
-      let newImageURL = currentPhoto.url;
+      let newImageURL = currentPhoto.image;
       let newImagePath = currentPhoto.path;
 
       if (newFile) {
@@ -93,8 +92,7 @@ export default function EditStorePhotoPage() {
       
       const updatedPhoto = {
         name: currentPhoto.name,
-        // Convert any potential undefined to null before updating
-        url: newImageURL || null,
+        image: newImageURL || null, // Use the correct field name
         path: newImagePath || null
       };
       
@@ -136,7 +134,7 @@ export default function EditStorePhotoPage() {
         </div>
         <div>
           <label className="block mb-1 font-semibold">Current Photo</label>
-          {currentPhoto.url && <img src={currentPhoto.url} alt={currentPhoto.name} className="h-32 w-32 object-cover rounded mb-2" />}
+          {currentPhoto.image && <img src={currentPhoto.image} alt={currentPhoto.name} className="h-32 w-32 object-cover rounded mb-2" />}
           <label className="block mb-1 font-semibold">Replace Photo (optional)</label>
           <input type="file" accept="image/*" onChange={(e) => setNewFile(e.target.files?.[0] || null)} />
         </div>
