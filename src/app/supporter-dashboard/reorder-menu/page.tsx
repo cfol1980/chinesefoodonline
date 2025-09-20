@@ -1,3 +1,5 @@
+// src/app/supporter-dashboard/reorder-menu/page.tsx
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -30,13 +32,16 @@ export default function ReorderMenuPage() {
         return;
       }
 
+      setUser(firebaseUser); // Set the user state
+
       const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
       if (!userDoc.exists() || userDoc.data().role !== "supporter") {
+        setRole("denied"); // Set role to denied if not a supporter
         setLoading(false);
-        router.push("/dashboard");
         return;
       }
-
+      
+      setRole(userDoc.data().role); // Set the role state
       const supporterSlug = userDoc.data().ownedSupporterId;
       setSlug(supporterSlug);
 
@@ -84,7 +89,7 @@ export default function ReorderMenuPage() {
   if (loading) {
     return <div className="p-6">Loading menu items...</div>;
   }
-
+  // Check the role to grant or deny access
   if (role !== "supporter") {
     return <div className="p-6 text-red-600">You do not have access to this page.</div>;
   }

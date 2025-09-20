@@ -1,3 +1,5 @@
+// src/app/supporter-dashboard/edit-menu-item/[name]/page.tsx
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -7,7 +9,6 @@ import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { useRouter, useParams } from "next/navigation";
 
-// Define interfaces for data structures
 interface MenuItem {
   name: string;
   image?: string;
@@ -16,13 +17,13 @@ interface MenuItem {
 
 export default function EditMenuItemPage() {
   const router = useRouter();
-  const { name: itemNameParam } = useParams(); // Get the URL slug
+  const { name: itemNameParam } = useParams();
 
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState<string | null>(null);
   const [slug, setSlug] = useState<string | null>(null);
   const [currentMenuItem, setCurrentMenuItem] = useState<MenuItem | null>(null);
-  const [originalName, setOriginalName] = useState<string | null>(null); // Store the original name for lookup
+  const [originalName, setOriginalName] = useState<string | null>(null);
   const [newFile, setNewFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,12 +36,16 @@ export default function EditMenuItemPage() {
         return;
       }
 
+      setUser(firebaseUser); // Set the user state
+
       const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
       if (!userDoc.exists() || userDoc.data().role !== "supporter") {
+        setRole("denied"); // Set the role to denied
         setLoading(false);
-        router.push("/dashboard");
         return;
       }
+      
+      setRole(userDoc.data().role); // Set the role state
 
       const supporterSlug = userDoc.data().ownedSupporterId;
       setSlug(supporterSlug);
@@ -54,7 +59,12 @@ export default function EditMenuItemPage() {
         const menuItems = data.menu || [];
         const foundItem = menuItems.find((item: MenuItem) => item.name === decodedName);
         if (foundItem) {
-          setCurrentMenuItem(foundItem);
+          // Explicitly handle image and path to avoid undefined
+          setCurrentMenuItem({
+            name: foundItem.name,
+            image: foundItem.image || '', // Fallback to empty string
+            path: foundItem.path || ''     // Fallback to empty string
+          });
         }
       }
       setLoading(false);
@@ -81,14 +91,11 @@ export default function EditMenuItemPage() {
       let newImageURL = currentMenuItem.image;
       let newImagePath = currentMenuItem.path;
 
-      // Check if a new file was selected for upload
       if (newFile) {
-        // Delete the old image from storage if it exists
         if (currentMenuItem.path) {
           await deleteObject(storageRef(storage, currentMenuItem.path));
         }
 
-        // Upload the new image
         const timestamp = Date.now();
         newImagePath = `menu/${slug}/${timestamp}-${newFile.name}`;
         const imageRef = storageRef(storage, newImagePath);
@@ -96,14 +103,12 @@ export default function EditMenuItemPage() {
         newImageURL = await getDownloadURL(imageRef);
       }
       
-      // Create the updated item object
       const updatedItem = {
         name: currentMenuItem.name,
         image: newImageURL,
         path: newImagePath
       };
       
-      // Map through the existing array to find and replace the item
       const newMenuArray = existingMenuArray.map(item => {
         if (item.name === originalName) {
           return updatedItem;
@@ -128,7 +133,7 @@ export default function EditMenuItemPage() {
 
   if (loading) return <div className="p-4">Loading...</div>;
 
-  if (!currentMenuItem) {
+  if (role !== "supporter" || !currentMenuItem) {
     return <div className="p-4 text-red-600">Menu item not found or access denied.</div>;
   }
 
