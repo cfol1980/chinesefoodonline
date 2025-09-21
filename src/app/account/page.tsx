@@ -14,6 +14,7 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import Link from "next/link";
+import Image from "next/image"; // **FIX**: Added next/image import
 
 // Add this interface to handle the window object for reCAPTCHA
 declare global {
@@ -46,15 +47,16 @@ export default function AccountPage() {
   // --- Phone Auth Functions ---
   const setupRecaptcha = () => {
     if (typeof window !== "undefined" && !window.recaptchaVerifier) {
+      // **FIX**: Reordered the arguments for RecaptchaVerifier
       window.recaptchaVerifier = new RecaptchaVerifier(
-        auth,
         "recaptcha-container",
         {
           size: "invisible",
           callback: () => {
             console.log("reCAPTCHA solved");
           },
-        }
+        },
+        auth
       );
     }
   };
@@ -82,7 +84,6 @@ export default function AccountPage() {
 
     try {
       await confirmationResult.confirm(otp);
-      // onAuthStateChanged will handle the rest
     } catch (err: any) {
       setError(`Error verifying OTP: ${err.message}`);
     }
@@ -99,13 +100,12 @@ export default function AccountPage() {
         if (userSnap.exists()) {
           setRole(userSnap.data().role);
         } else {
-          // **MODIFIED**: This now handles both Google and Phone users
           const newUserProfile = {
-            email: firebaseUser.email || null, // Will be null for phone users
-            name: firebaseUser.displayName || "", // Will be empty string for phone users
+            email: firebaseUser.email || null,
+            name: firebaseUser.displayName || "",
             displayName: firebaseUser.displayName || "",
             photoURL: firebaseUser.photoURL || "",
-            phone: firebaseUser.phoneNumber || "", // Captures phone number
+            phone: firebaseUser.phoneNumber || "",
             role: "user",
             city: "",
             state: "",
@@ -121,7 +121,6 @@ export default function AccountPage() {
       } else {
         setUser(null);
         setRole(null);
-        // Reset phone auth state on logout
         setConfirmationResult(null);
         setPhoneNumber("");
         setOtp("");
@@ -142,7 +141,6 @@ export default function AccountPage() {
         <h1 className="text-2xl font-bold mb-4">Welcome</h1>
         <p className="mb-6">Please sign in to manage your account.</p>
         
-        {/* Invisible reCAPTCHA container */}
         <div id="recaptcha-container"></div>
 
         {loginMethod === "google" ? (
@@ -169,7 +167,7 @@ export default function AccountPage() {
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   placeholder="e.g., +16505551234"
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border rounded text-black"
                   required
                 />
                 <button type="submit" className="w-full bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
@@ -183,7 +181,7 @@ export default function AccountPage() {
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
                   placeholder="6-digit code"
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border rounded text-black"
                   required
                 />
                 <button type="submit" className="w-full bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
@@ -210,11 +208,17 @@ export default function AccountPage() {
   // --- RENDER IF LOGGED IN ---
   return (
     <div className="p-6 max-w-lg mx-auto">
-      {/* ... (Your existing logged-in UI is perfect and does not need changes) ... */}
       <h1 className="text-2xl font-bold mb-4">Account Overview</h1>
       <div className="flex items-center mb-6">
         {user.photoURL ? (
-          <img src={user.photoURL} alt="Profile" className="w-16 h-16 rounded-full mr-4" />
+          // **FIX**: Replaced <img> with next/image <Image>
+          <Image
+            src={user.photoURL}
+            alt="Profile"
+            width={64}
+            height={64}
+            className="rounded-full mr-4"
+          />
         ) : (
           <div className="w-16 h-16 rounded-full mr-4 bg-gray-200 flex items-center justify-center text-gray-500 text-2xl font-bold">
             {user.displayName?.charAt(0) || user.phoneNumber?.slice(-4,-2) || '?'}
