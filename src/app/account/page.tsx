@@ -14,7 +14,7 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import Link from "next/link";
-import Image from "next/image"; // **FIX**: Added next/image import
+import Image from "next/image";
 
 // Add this interface to handle the window object for reCAPTCHA
 declare global {
@@ -28,13 +28,24 @@ export default function AccountPage() {
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // --- New state for Phone Auth ---
+  // State for Phone Auth
   const [loginMethod, setLoginMethod] = useState<"google" | "phone">("google");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [otp, setOtp] = useState("");
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [error, setError] = useState("");
 
+  // Helper function to format US phone numbers to E.164 format
+  const formatUSPhoneNumber = (number: string): string | null => {
+    const cleaned = number.replace(/\D/g, ''); // Remove all non-digit characters
+    if (cleaned.length === 10) {
+      return `+1${cleaned}`; // Prepend +1 for 10-digit numbers
+    } else if (cleaned.length === 11 && cleaned.startsWith('1')) {
+      return `+${cleaned}`; // Prepend + for 11-digit numbers starting with 1
+    }
+    return null; // Return null if format is invalid
+  };
+  
   const handleGoogleLogin = async () => {
     const provider = new GoogleAuthProvider();
     await signInWithPopup(auth, provider).catch((err) => setError(err.message));
@@ -47,16 +58,15 @@ export default function AccountPage() {
   // --- Phone Auth Functions ---
   const setupRecaptcha = () => {
     if (typeof window !== "undefined" && !window.recaptchaVerifier) {
-      // **FIX**: Reordered the arguments for RecaptchaVerifier
       window.recaptchaVerifier = new RecaptchaVerifier(
-        "recaptcha-container",
-        {
+        "recaptcha-container", // 1. The container ID
+        {                      // 2. The parameters
           size: "invisible",
           callback: () => {
             console.log("reCAPTCHA solved");
           },
         },
-        auth
+        auth                   // 3. The auth object
       );
     }
   };
@@ -64,12 +74,17 @@ export default function AccountPage() {
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!phoneNumber) return setError("Please enter a phone number.");
+
+    const formattedPhoneNumber = formatUSPhoneNumber(phoneNumber);
+    if (!formattedPhoneNumber) {
+      setError("Please enter a valid 10-digit US phone number.");
+      return;
+    }
 
     try {
       setupRecaptcha();
       const appVerifier = window.recaptchaVerifier;
-      const result = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+      const result = await signInWithPhoneNumber(auth, formattedPhoneNumber, appVerifier);
       setConfirmationResult(result);
     } catch (err: any) {
       setError(`Error sending OTP: ${err.message}`);
@@ -100,6 +115,7 @@ export default function AccountPage() {
         if (userSnap.exists()) {
           setRole(userSnap.data().role);
         } else {
+          // Create a new user profile, handling both Google and Phone providers
           const newUserProfile = {
             email: firebaseUser.email || null,
             name: firebaseUser.displayName || "",
@@ -162,14 +178,20 @@ export default function AccountPage() {
           <div>
             {!confirmationResult ? (
               <form onSubmit={handleSendOtp} className="space-y-4">
-                <input
-                  type="tel"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="e.g., +16505551234"
-                  className="w-full p-2 border rounded text-black"
-                  required
-                />
+                <div>
+                  <label htmlFor="phone-input" className="block text-sm font-medium text-gray-700 text-left mb-1">
+                    Phone Number (US only)
+                  </label>
+                  <input
+                    id="phone-input"
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="(555) 123-4567"
+                    className="w-full p-2 border rounded text-black"
+                    required
+                  />
+                </div>
                 <button type="submit" className="w-full bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
                   Send Code
                 </button>
@@ -211,7 +233,6 @@ export default function AccountPage() {
       <h1 className="text-2xl font-bold mb-4">Account Overview</h1>
       <div className="flex items-center mb-6">
         {user.photoURL ? (
-          // **FIX**: Replaced <img> with next/image <Image>
           <Image
             src={user.photoURL}
             alt="Profile"
