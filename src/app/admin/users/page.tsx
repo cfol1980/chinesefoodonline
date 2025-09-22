@@ -10,6 +10,8 @@ import { useRouter } from "next/navigation";
 interface UserDoc {
   id: string;
   email: string;
+  name?: string; // Added new field for user's name
+  phone?: string; // Added new field for user's phone number
   role: string;
   ownedSupporterId?: string;
 }
@@ -66,7 +68,9 @@ export default function ManageUsersPage() {
       <table className="min-w-full bg-white rounded shadow">
         <thead>
           <tr className="bg-gray-200">
+            <th className="py-2 px-4 text-left">Name</th> {/* Added Name header */}
             <th className="py-2 px-4 text-left">Email</th>
+            <th className="py-2 px-4 text-left">Phone</th> {/* Added Phone header */}
             <th className="py-2 px-4 text-left">Role</th>
             <th className="py-2 px-4 text-left">Owned Supporter</th>
             <th className="py-2 px-4 text-left">Assign Slug</th>
@@ -75,7 +79,9 @@ export default function ManageUsersPage() {
         <tbody>
           {users.map((u) => (
             <tr key={u.id} className="border-t">
+              <td className="py-2 px-4">{u.name || "-"}</td> {/* Display user name */}
               <td className="py-2 px-4">{u.email}</td>
+              <td className="py-2 px-4">{u.phone || "-"}</td> {/* Display user phone */}
               <td className="py-2 px-4">
                 <select
                   defaultValue={u.role}
@@ -88,19 +94,17 @@ export default function ManageUsersPage() {
                   <option value="admin">admin</option>
                 </select>
               </td>
-
-              {/* Display current slug or '-' */}
               <td className="py-2 px-4">
                 {u.ownedSupporterId || "-"}
               </td>
-
-              {/* Input to assign */}
               <td className="py-2 px-4">
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
-                    const inputValue = e.currentTarget.slugInput.value;
-                    handleSlugUpdate(u.id, inputValue);
+                    const inputValue = (e.currentTarget.querySelector('input') as HTMLInputElement)?.value;
+                    if (inputValue) {
+                        handleSlugUpdate(u.id, inputValue);
+                    }
                   }}
                 >
                   <input

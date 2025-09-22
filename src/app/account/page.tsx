@@ -8,26 +8,102 @@ import {
   signOut,
   onAuthStateChanged,
   User,
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+  ConfirmationResult,
 } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import Image from "next/image";
+
+// Add this interface to handle the window object for reCAPTCHA
+declare global {
+  interface Window {
+    recaptchaVerifier: RecaptchaVerifier;
+  }
+}
 
 export default function AccountPage() {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
 
-  const handleLogin = async () => {
+  // State for Phone Auth
+  const [loginMethod, setLoginMethod] = useState<"google" | "phone">("google");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [otp, setOtp] = useState("");
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [error, setError] = useState("");
+
+  // Helper function to format US phone numbers to E.164 format
+  const formatUSPhoneNumber = (number: string): string | null => {
+    const cleaned = number.replace(/\D/g, ''); // Remove all non-digit characters
+    if (cleaned.length === 10) {
+      return `+1${cleaned}`; // Prepend +1 for 10-digit numbers
+    } else if (cleaned.length === 11 && cleaned.startsWith('1')) {
+      return `+${cleaned}`; // Prepend + for 11-digit numbers starting with 1
+    }
+    return null; // Return null if format is invalid
+  };
+  
+  const handleGoogleLogin = async () => {
     const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    await signInWithPopup(auth, provider).catch((err) => setError(err.message));
   };
 
   const handleLogout = async () => {
     await signOut(auth);
   };
 
+  // --- Phone Auth Functions ---
+  const setupRecaptcha = () => {
+    if (typeof window !== "undefined" && !window.recaptchaVerifier) {
+      window.recaptchaVerifier = new RecaptchaVerifier(
+        "recaptcha-container", // 1. The container ID
+        {                      // 2. The parameters
+          size: "invisible",
+          callback: () => {
+            console.log("reCAPTCHA solved");
+          },
+        },
+        auth                   // 3. The auth object
+      );
+    }
+  };
+
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    const formattedPhoneNumber = formatUSPhoneNumber(phoneNumber);
+    if (!formattedPhoneNumber) {
+      setError("Please enter a valid 10-digit US phone number.");
+      return;
+    }
+
+    try {
+      setupRecaptcha();
+      const appVerifier = window.recaptchaVerifier;
+      const result = await signInWithPhoneNumber(auth, formattedPhoneNumber, appVerifier);
+      setConfirmationResult(result);
+    } catch (err: any) {
+      setError(`Error sending OTP: ${err.message}`);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (!confirmationResult) return setError("Please request an OTP first.");
+    if (!otp) return setError("Please enter the OTP.");
+
+    try {
+      await confirmationResult.confirm(otp);
+    } catch (err: any) {
+      setError(`Error verifying OTP: ${err.message}`);
+    }
+  };
+  
   // Listen for auth state changes and manage user document
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -37,31 +113,33 @@ export default function AccountPage() {
         const userSnap = await getDoc(userRef);
 
         if (userSnap.exists()) {
-          // User document already exists, just get their role
           setRole(userSnap.data().role);
         } else {
-          // **NEW**: Create user document with the full schema for first-time users
+          // Create a new user profile, handling both Google and Phone providers
           const newUserProfile = {
-            email: firebaseUser.email,
+            email: firebaseUser.email || null,
             name: firebaseUser.displayName || "",
             displayName: firebaseUser.displayName || "",
             photoURL: firebaseUser.photoURL || "",
-            role: "user", // Default role
+            phone: firebaseUser.phoneNumber || "",
+            role: "user",
             city: "",
             state: "",
             zip: "",
             country: "",
-            phone: "",
             bio: "",
-            ownedSupporterId: [], // Use an array in case a user can own multiple
+            ownedSupporterId: [],
             createdAt: serverTimestamp(),
           };
           await setDoc(userRef, newUserProfile);
-          setRole("user"); // Set role for the current session
+          setRole("user");
         }
       } else {
         setUser(null);
         setRole(null);
+        setConfirmationResult(null);
+        setPhoneNumber("");
+        setOtp("");
       }
       setLoading(false);
     });
@@ -75,15 +153,76 @@ export default function AccountPage() {
   // --- RENDER IF NOT LOGGED IN ---
   if (!user) {
     return (
-      <div className="p-6 text-center">
+      <div className="p-6 text-center max-w-sm mx-auto">
         <h1 className="text-2xl font-bold mb-4">Welcome</h1>
         <p className="mb-6">Please sign in to manage your account.</p>
-        <button
-          onClick={handleLogin}
-          className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
-        >
-          Sign in with Google
-        </button>
+        
+        <div id="recaptcha-container"></div>
+
+        {loginMethod === "google" ? (
+          <div>
+            <button
+              onClick={handleGoogleLogin}
+              className="w-full bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
+            >
+              Sign in with Google
+            </button>
+            <button
+              onClick={() => setLoginMethod("phone")}
+              className="mt-2 text-sm text-blue-500 hover:underline"
+            >
+              Sign in with Phone Number
+            </button>
+          </div>
+        ) : (
+          <div>
+            {!confirmationResult ? (
+              <form onSubmit={handleSendOtp} className="space-y-4">
+                <div>
+                  <label htmlFor="phone-input" className="block text-sm font-medium text-gray-700 text-left mb-1">
+                    Phone Number (US only)
+                  </label>
+                  <input
+                    id="phone-input"
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="(555) 123-4567"
+                    className="w-full p-2 border rounded text-black"
+                    required
+                  />
+                </div>
+                <button type="submit" className="w-full bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
+                  Send Code
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleVerifyOtp} className="space-y-4">
+                <input
+                  type="text"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  placeholder="6-digit code"
+                  className="w-full p-2 border rounded text-black"
+                  required
+                />
+                <button type="submit" className="w-full bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
+                  Verify & Sign In
+                </button>
+              </form>
+            )}
+             <button
+              onClick={() => {
+                setLoginMethod("google");
+                setError("");
+              }}
+              className="mt-2 text-sm text-blue-500 hover:underline"
+            >
+              Back to Google Sign-in
+            </button>
+          </div>
+        )}
+        {error && <p className="mt-4 text-sm text-red-500">{error}</p>}
       </div>
     );
   }
@@ -93,23 +232,30 @@ export default function AccountPage() {
     <div className="p-6 max-w-lg mx-auto">
       <h1 className="text-2xl font-bold mb-4">Account Overview</h1>
       <div className="flex items-center mb-6">
-        {user.photoURL && (
-          <img src={user.photoURL} alt="Profile" className="w-16 h-16 rounded-full mr-4" />
+        {user.photoURL ? (
+          <Image
+            src={user.photoURL}
+            alt="Profile"
+            width={64}
+            height={64}
+            className="rounded-full mr-4"
+          />
+        ) : (
+          <div className="w-16 h-16 rounded-full mr-4 bg-gray-200 flex items-center justify-center text-gray-500 text-2xl font-bold">
+            {user.displayName?.charAt(0) || user.phoneNumber?.slice(-4,-2) || '?'}
+          </div>
         )}
         <div>
-          <p className="font-semibold">{user.displayName}</p>
-          <p className="text-gray-600">{user.email}</p>
+          <p className="font-semibold">{user.displayName || 'New User'}</p>
+          <p className="text-gray-600">{user.email || user.phoneNumber}</p>
           <p className="text-sm capitalize text-gray-500 mt-1">Role: {role}</p>
         </div>
       </div>
       
       <div className="space-y-3 mb-6">
-        {/* Link to view/edit profile */}
         <Link href="/profile" className="block w-full text-center bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
           Edit My Profile
         </Link>
-        
-        {/* Role-specific links */}
         {role === "admin" && (
           <Link href="/admin" className="block w-full text-center bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
             Go to Admin Panel
