@@ -19,6 +19,7 @@ interface UserProfile {
   country?: string;
   phone?: string;
   bio?: string;
+  wechatId?: string; // New field for WeChat ID
   ownedSupporterId?: string[];
 }
 
@@ -90,6 +91,7 @@ export default function ProfilePage() {
       const userRef = doc(db, 'users', user.uid);
 
       const updates = {
+        email: profile.email ?? "", // Allow email to be updated
         name: profile.name ?? "",
         displayName: profile.displayName ?? "",
         city: profile.city ?? "",
@@ -98,6 +100,7 @@ export default function ProfilePage() {
         country: profile.country ?? "",
         phone: profile.phone ?? "", // already formatted
         bio: profile.bio ?? "",
+        wechatId: profile.wechatId ?? "", // Include wechatId in the update
       };
 
       await updateDoc(userRef, updates);
@@ -130,30 +133,23 @@ export default function ProfilePage() {
     <div className="max-w-2xl mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">Your Profile</h1>
 
-      {/* Display-only info */}
-      <div className="bg-gray-50 p-4 rounded-lg mb-6 border">
-        <div className="flex items-center">
-          {profile.photoURL && (
-            <img
-              src={profile.photoURL}
-              alt="Profile"
-              className="w-20 h-20 rounded-full mr-5"
-            />
-          )}
-          <div>
-            <p>
-              <span className="font-semibold">Email:</span> {profile.email}
-            </p>
-            <p>
-              <span className="font-semibold">Role:</span>{" "}
-              <span className="capitalize">{profile.role}</span>
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* Editable form */}
       <div className="space-y-4">
+        {/* Email Input Field */}
+        <div>
+          <label htmlFor="email" className="block text-sm font-medium">
+            Email
+          </label>
+          <input
+            type="email"
+            name="email"
+            id="email"
+            value={profile.email ?? ""}
+            onChange={handleChange}
+            className="w-full p-2 border rounded mt-1"
+          />
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label htmlFor="displayName" className="block text-sm font-medium">
@@ -195,6 +191,21 @@ export default function ProfilePage() {
             rows={3}
             className="w-full p-2 border rounded mt-1"
           ></textarea>
+        </div>
+
+        {/* WeChat ID Input Field */}
+        <div>
+          <label htmlFor="wechatId" className="block text-sm font-medium">
+            WeChat ID
+          </label>
+          <input
+            type="text"
+            name="wechatId"
+            id="wechatId"
+            value={profile.wechatId ?? ""}
+            onChange={handleChange}
+            className="w-full p-2 border rounded mt-1"
+          />
         </div>
 
         {/* Phone with inline error */}
@@ -283,6 +294,12 @@ export default function ProfilePage() {
       >
         {saving ? 'Saving...' : 'Save Profile'}
       </button>
+
+      <div className="text-center mt-6">
+        <Link href="/account" className="text-blue-600 underline">
+          Back to Account
+        </Link>
+      </div>
     </div>
   );
 }
