@@ -13,6 +13,76 @@ import {
 import { ref as storageRef, deleteObject } from "firebase/storage";
 import Link from "next/link";
 
+// ----- Translations -----
+const translations = {
+  en: {
+    dashboard: "Supporter Dashboard",
+    name: "Name",
+    description: "Description",
+    phone: "Phone",
+    address: "Address",
+    city: "City",
+    state: "State",
+    zip: "Zip Code",
+    businessHours: "Business Hours",
+    orderingStatus: "Online Ordering Status",
+    enabled: "Enabled",
+    disabled: "Disabled",
+    editBusiness: "Edit Business Details",
+    manageOrders: "Manage Online Orders",
+    addMenu: "+ Add Menu Item",
+    addRec: "+ Add Recommended Dish",
+    addStorePhoto: "+ Add Store Photo",
+    addPromotion: "+ Add Promotion",
+    currentPromotion: "Current Promotion",
+    promotionName: "Name",
+    promotionCode: "Code",
+    promotionStatus: "Status",
+    promotionDates: "Dates",
+    editPromotion: "Edit Promotion",
+    deletePromotion: "Delete Promotion",
+    menuItems: "Menu Items",
+    reorderMenu: "Reorder Menu",
+    recDishes: "Recommended Dishes",
+    reorderRecs: "Reorder Recommended Dishes",
+    storePhotos: "Store Photos",
+    reorderPhotos: "Reorder Store Photos",
+  },
+  zh: {
+    dashboard: "商家后台",
+    name: "商店名字",
+    description: "描述",
+    phone: "电话",
+    address: "地址",
+    city: "城市",
+    state: "州",
+    zip: "邮编",
+    businessHours: "营业时间",
+    orderingStatus: "网上点餐状态",
+    enabled: "启用",
+    disabled: "停用",
+    editBusiness: "编辑商家信息",
+    manageOrders: "管理网上订单",
+    addMenu: "+ 添加菜单项",
+    addRec: "+ 添加推荐菜",
+    addStorePhoto: "+ 添加店铺照片",
+    addPromotion: "+ 添加促销活动",
+    currentPromotion: "当前促销",
+    promotionName: "名称",
+    promotionCode: "代码",
+    promotionStatus: "状态",
+    promotionDates: "日期",
+    editPromotion: "编辑促销",
+    deletePromotion: "删除促销",
+    menuItems: "菜单",
+    reorderMenu: "调整菜单顺序",
+    recDishes: "推荐菜",
+    reorderRecs: "调整推荐菜顺序",
+    storePhotos: "店铺照片",
+    reorderPhotos: "调整照片顺序",
+  },
+};
+
 interface MenuItem {
   name: string;
   image?: string;
@@ -64,6 +134,9 @@ export default function SupporterDashboard() {
   const [slug, setSlug] = useState<string | null>(null);
   const [supporterData, setSupporterData] = useState<SupporterData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lang, setLang] = useState<"en" | "zh">("en");
+
+  const t = (key: keyof typeof translations["en"]) => translations[lang][key];
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -107,11 +180,11 @@ export default function SupporterDashboard() {
       await updateDoc(doc(db, "supporters", slug), {
         menu: arrayRemove(itemToDelete),
       });
-      alert("Menu 菜单 item deleted!");
+      alert("Menu item deleted!");
       window.location.reload();
     } catch (err) {
       console.error(err);
-      alert("Delete 删除 failed.");
+      alert("Delete failed.");
     }
   };
 
@@ -124,11 +197,11 @@ export default function SupporterDashboard() {
       await updateDoc(doc(db, "supporters", slug), {
         recommendations: arrayRemove(recToDelete),
       });
-      alert("Recommendation 推荐 deleted!");
+      alert("Recommendation deleted!");
       window.location.reload();
     } catch (err) {
       console.error(err);
-      alert("Delete 删除 failed.");
+      alert("Delete failed.");
     }
   };
 
@@ -141,18 +214,18 @@ export default function SupporterDashboard() {
       await updateDoc(doc(db, "supporters", slug), {
         storeImages: arrayRemove(imgToDelete),
       });
-      alert("Store image 店铺图片 deleted!");
+      alert("Store image deleted!");
       window.location.reload();
     } catch (err) {
       console.error(err);
-      alert("Delete 删除 failed.");
+      alert("Delete failed.");
     }
   };
 
   const handleDeletePromotion = async () => {
     if (!slug || !supporterData?.promotion) return;
 
-    if (window.confirm("Are you sure 确定要删除 this promotion 优惠?")) {
+    if (window.confirm("Are you sure you want to delete this promotion?")) {
       try {
         if (supporterData.promotion.promotePictureURL) {
           const imageRef = storageRef(
@@ -166,63 +239,71 @@ export default function SupporterDashboard() {
         await updateDoc(doc(db, "supporters", slug), {
           promotion: deleteField(),
         });
-        alert("Promotion 优惠 deleted successfully 成功!");
+        alert("Promotion deleted successfully!");
         setSupporterData((prev) =>
           prev ? { ...prev, promotion: undefined } : null
         );
       } catch (err) {
         console.error("Error deleting promotion:", err);
-        alert("Failed 失败 to delete promotion 优惠.");
+        alert("Failed to delete promotion.");
       }
     }
   };
 
-  if (loading) return <div className="p-4">Loading 加载中...</div>;
-  if (!user) return <div className="p-4">Please log in 登录 to continue.</div>;
+  if (loading) return <div className="p-4">Loading...</div>;
+  if (!user) return <div className="p-4">Please log in to continue.</div>;
   if (role !== "supporter") {
     return (
       <div className="p-4 text-red-600">
-        You do not have access 没有权限 to this page.
+        You do not have access to this page.
       </div>
     );
   }
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">
-        Supporter Dashboard 商户管理
-      </h1>
+      {/* Language Toggle */}
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={() => setLang(lang === "en" ? "zh" : "en")}
+          className="px-3 py-1 border rounded"
+        >
+          {lang === "en" ? "中文" : "English"}
+        </button>
+      </div>
+
+      <h1 className="text-2xl font-bold mb-4">{t("dashboard")}</h1>
 
       {supporterData ? (
         <div className="bg-white p-4 rounded shadow space-y-4">
           <div>
             <p>
-              <strong>Name 姓名:</strong> {supporterData.name}
+              <strong>{t("name")}:</strong> {supporterData.name}
             </p>
             <p>
-              <strong>Description 描述:</strong> {supporterData.description}
+              <strong>{t("description")}:</strong> {supporterData.description}
             </p>
             <p>
-              <strong>Phone 电话:</strong> {supporterData.phone}
+              <strong>{t("phone")}:</strong> {supporterData.phone}
             </p>
             <p>
-              <strong>Address 地址:</strong> {supporterData.address}
+              <strong>{t("address")}:</strong> {supporterData.address}
             </p>
             <p>
-              <strong>City 城市:</strong> {supporterData.city}
+              <strong>{t("city")}:</strong> {supporterData.city}
             </p>
             <p>
-              <strong>State 州:</strong> {supporterData.state}
+              <strong>{t("state")}:</strong> {supporterData.state}
             </p>
             <p>
-              <strong>Zip Code 邮编:</strong> {supporterData.zipCode}
+              <strong>{t("zip")}:</strong> {supporterData.zipCode}
             </p>
             <p>
-              <strong>Business Hours 营业时间:</strong>{" "}
+              <strong>{t("businessHours")}:</strong>{" "}
               {supporterData.businessHours}
             </p>
             <p>
-              <strong>Online Ordering Status 网上点餐状态:</strong>
+              <strong>{t("orderingStatus")}:</strong>
               <span
                 className={
                   supporterData.isOrderingEnabled
@@ -230,7 +311,9 @@ export default function SupporterDashboard() {
                     : "text-red-600 font-bold ml-2"
                 }
               >
-                {supporterData.isOrderingEnabled ? "Enabled 开启" : "Disabled 关闭"}
+                {supporterData.isOrderingEnabled
+                  ? t("enabled")
+                  : t("disabled")}
               </span>
             </p>
           </div>
@@ -240,35 +323,35 @@ export default function SupporterDashboard() {
               href={`/supporter-dashboard/edit`}
               className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
             >
-              Edit 编辑 Business Details 商户资料
+              {t("editBusiness")}
             </Link>
 
             <Link
               href={`/supporter-dashboard/orders`}
               className="inline-block bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600"
             >
-              Manage 管理 Online Orders 订单
+              {t("manageOrders")}
             </Link>
 
             <Link
               href={`/supporter-dashboard/add-menu`}
               className="inline-block bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
             >
-              + Add 添加 Menu Item 菜单
+              {t("addMenu")}
             </Link>
 
             <Link
               href={`/supporter-dashboard/add-recommendation`}
               className="inline-block bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
             >
-              + Add 添加 Recommended Dish 推荐菜
+              {t("addRec")}
             </Link>
 
             <Link
               href={`/supporter-dashboard/add-store-photo`}
               className="inline-block bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
             >
-              + Add 添加 Store Photo 店铺照片
+              {t("addStorePhoto")}
             </Link>
 
             {!supporterData.promotion && (
@@ -276,7 +359,7 @@ export default function SupporterDashboard() {
                 href={`/supporter-dashboard/add-promotion`}
                 className="inline-block bg-pink-600 text-white px-4 py-2 rounded hover:bg-pink-700"
               >
-                + Add 添加 Promotion 优惠
+                {t("addPromotion")}
               </Link>
             )}
           </div>
@@ -284,19 +367,19 @@ export default function SupporterDashboard() {
           {supporterData.promotion && (
             <div className="mt-6">
               <h2 className="text-xl font-semibold mb-2">
-                Current Promotion 当前优惠
+                {t("currentPromotion")}
               </h2>
               <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 shadow-sm space-y-2">
                 <p>
-                  <strong>Name 名称:</strong>{" "}
+                  <strong>{t("promotionName")}:</strong>{" "}
                   {supporterData.promotion.promoteName}
                 </p>
                 <p>
-                  <strong>Code 代码:</strong>{" "}
+                  <strong>{t("promotionCode")}:</strong>{" "}
                   {supporterData.promotion.promoteCode}
                 </p>
                 <p>
-                  <strong>Status 状态:</strong>
+                  <strong>{t("promotionStatus")}:</strong>
                   <span
                     className={`ml-1 font-bold ${
                       supporterData.promotion.promoteStatus
@@ -305,12 +388,12 @@ export default function SupporterDashboard() {
                     }`}
                   >
                     {supporterData.promotion.promoteStatus
-                      ? "Active 启用"
-                      : "Inactive 停用"}
+                      ? t("enabled")
+                      : t("disabled")}
                   </span>
                 </p>
                 <p>
-                  <strong>Dates 日期:</strong>{" "}
+                  <strong>{t("promotionDates")}:</strong>{" "}
                   {new Date(
                     supporterData.promotion.promoteCreateDate
                   ).toLocaleDateString()}{" "}
@@ -322,7 +405,7 @@ export default function SupporterDashboard() {
                 {supporterData.promotion.promotePictureURL && (
                   <img
                     src={supporterData.promotion.promotePictureURL}
-                    alt="Promotion 优惠"
+                    alt="Promotion"
                     className="w-32 h-32 object-cover rounded-md"
                   />
                 )}
@@ -331,13 +414,13 @@ export default function SupporterDashboard() {
                     href={`/supporter-dashboard/add-promotion`}
                     className="inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
                   >
-                    Edit 编辑 Promotion 优惠
+                    {t("editPromotion")}
                   </Link>
                   <button
                     onClick={handleDeletePromotion}
                     className="inline-block bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
                   >
-                    Delete 删除 Promotion 优惠
+                    {t("deletePromotion")}
                   </button>
                 </div>
               </div>
@@ -347,12 +430,14 @@ export default function SupporterDashboard() {
           {/* Menu items */}
           {supporterData.menu && supporterData.menu.length > 0 && (
             <div className="mt-6">
-              <h2 className="text-xl font-semibold mb-2">Menu 菜单 Items</h2>
+              <h2 className="text-xl font-semibold mb-2">
+                {t("menuItems")}
+              </h2>
               <Link
                 href={`/supporter-dashboard/reorder-menu`}
                 className="inline-block bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 mb-4"
               >
-                Reorder 重新排序 Menu 菜单
+                {t("reorderMenu")}
               </Link>
               {supporterData.menu.map((item, index) => (
                 <div
@@ -367,13 +452,13 @@ export default function SupporterDashboard() {
                       )}`}
                       className="text-blue-600 hover:text-blue-700"
                     >
-                      Edit 编辑
+                      Edit
                     </Link>
                     <button
                       onClick={() => handleDeleteMenu(item)}
                       className="text-red-600 hover:text-red-700"
                     >
-                      Delete 删除
+                      Delete
                     </button>
                   </div>
                 </div>
@@ -386,13 +471,13 @@ export default function SupporterDashboard() {
             supporterData.recommendations.length > 0 && (
               <div className="mt-6">
                 <h2 className="text-xl font-semibold mb-2">
-                  Recommended Dishes 推荐菜
+                  {t("recDishes")}
                 </h2>
                 <Link
                   href={`/supporter-dashboard/reorder-recommendations`}
                   className="inline-block bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 mb-4"
                 >
-                  Reorder 重新排序 Recommended Dishes 推荐菜
+                  {t("reorderRecs")}
                 </Link>
                 {supporterData.recommendations.map((rec, index) => (
                   <div
@@ -407,13 +492,13 @@ export default function SupporterDashboard() {
                         )}`}
                         className="text-blue-600 hover:text-blue-700"
                       >
-                        Edit 编辑
+                        Edit
                       </Link>
                       <button
                         onClick={() => handleDeleteRecommendation(rec)}
                         className="text-red-600 hover:text-red-700"
                       >
-                        Delete 删除
+                        Delete
                       </button>
                     </div>
                   </div>
@@ -422,53 +507,56 @@ export default function SupporterDashboard() {
             )}
 
           {/* Store Images */}
-          {supporterData.storeImages && supporterData.storeImages.length > 0 && (
-            <div className="mt-6">
-              <h2 className="text-xl font-semibold mb-2">Store 店铺 Photos 照片</h2>
-              <Link
-                href={`/supporter-dashboard/reorder-store-photos`}
-                className="inline-block bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 mb-4"
-              >
-                Reorder 重新排序 Store 店铺 Photos 照片
-              </Link>
-              {supporterData.storeImages.map((img: any, index) => (
-                <div
-                  key={index}
-                  className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded"
+          {supporterData.storeImages &&
+            supporterData.storeImages.length > 0 && (
+              <div className="mt-6">
+                <h2 className="text-xl font-semibold mb-2">
+                  {t("storePhotos")}
+                </h2>
+                <Link
+                  href={`/supporter-dashboard/reorder-store-photos`}
+                  className="inline-block bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 mb-4"
                 >
-                  <div className="flex items-center gap-2">
-                    {img.url && (
-                      <img
-                        src={img.url}
-                        alt={img.name}
-                        className="h-12 w-12 object-cover rounded"
-                      />
-                    )}
-                    <span>{img.name}</span>
+                  {t("reorderPhotos")}
+                </Link>
+                {supporterData.storeImages.map((img: any, index) => (
+                  <div
+                    key={index}
+                    className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded"
+                  >
+                    <div className="flex items-center gap-2">
+                      {img.url && (
+                        <img
+                          src={img.url}
+                          alt={img.name}
+                          className="h-12 w-12 object-cover rounded"
+                        />
+                      )}
+                      <span>{img.name}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Link
+                        href={`/supporter-dashboard/edit-store-photo/${encodeURIComponent(
+                          img.name
+                        )}`}
+                        className="text-blue-600 hover:text-blue-700"
+                      >
+                        Edit
+                      </Link>
+                      <button
+                        onClick={() => handleDeleteStoreImage(img)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Link
-                      href={`/supporter-dashboard/edit-store-photo/${encodeURIComponent(
-                        img.name
-                      )}`}
-                      className="text-blue-600 hover:text-blue-700"
-                    >
-                      Edit 编辑
-                    </Link>
-                    <button
-                      onClick={() => handleDeleteStoreImage(img)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      Delete 删除
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
         </div>
       ) : (
-        <p>No supporter record 没有商户记录 associated with this account.</p>
+        <p>No supporter record associated with this account.</p>
       )}
     </div>
   );
