@@ -175,7 +175,7 @@ export default function ProfilePage() {
           </div>
           <div>
             <label htmlFor="name" className="block text-sm font-medium">
-              {isChinese ? "商店名字" : "Full Name"}
+              {isChinese ? "姓名" : "Full Name"}
             </label>
             <input
               type="text"
