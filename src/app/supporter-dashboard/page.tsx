@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useEffect, useState } from "react";
 import { auth, db, storage } from "@/lib/firebase";
@@ -13,7 +13,7 @@ import {
 import { ref as storageRef, deleteObject } from "firebase/storage";
 import Link from "next/link";
 
-// ----- Translations -----
+// ----- Translations (English / Chinese) -----
 const translations = {
   en: {
     dashboard: "Supporter Dashboard",
@@ -47,9 +47,25 @@ const translations = {
     reorderRecs: "Reorder Recommended Dishes",
     storePhotos: "Store Photos",
     reorderPhotos: "Reorder Store Photos",
+    edit: "Edit",
+    delete: "Delete",
+    menuDeleted: "Menu item deleted!",
+    recommendationDeleted: "Recommendation deleted!",
+    storeImageDeleted: "Store image deleted!",
+    deleteFailed: "Delete failed.",
+    confirmDeletePromotion: "Are you sure you want to delete this promotion?",
+    promotionDeleted: "Promotion deleted successfully!",
+    promotionDeleteFailed: "Failed to delete promotion.",
+    loading: "Loading...",
+    pleaseLogin: "Please log in to continue.",
+    noAccess: "You do not have access to this page.",
+    noSupporterRecord: "No supporter record associated with this account.",
+    backToAccount: "Back to Account",
+    yes: "Yes",
+    no: "No",
   },
   zh: {
-    dashboard: "商家后台",
+    dashboard: "商家管理",
     name: "商店名字",
     description: "描述",
     phone: "电话",
@@ -80,6 +96,22 @@ const translations = {
     reorderRecs: "调整推荐菜顺序",
     storePhotos: "店铺照片",
     reorderPhotos: "调整照片顺序",
+    edit: "编辑",
+    delete: "删除",
+    menuDeleted: "菜单已删除！",
+    recommendationDeleted: "推荐项已删除！",
+    storeImageDeleted: "店铺图片已删除！",
+    deleteFailed: "删除失败。",
+    confirmDeletePromotion: "确定要删除此促销活动吗？",
+    promotionDeleted: "促销已成功删除！",
+    promotionDeleteFailed: "删除促销失败。",
+    loading: "加载中...",
+    pleaseLogin: "请先登录。",
+    noAccess: "您没有权限访问此页面。",
+    noSupporterRecord: "该账户未关联任何商家记录。",
+    backToAccount: "返回账户",
+    yes: "确定",
+    no: "取消",
   },
 };
 
@@ -99,17 +131,17 @@ interface RecItem {
 interface ImgItem {
   name: string;
   url: string;
-  path: string;
+  path?: string;
 }
 
 interface PromotionData {
   promoteStatus: boolean;
   promoteName: string;
   promoteCode: string;
-  promotePictureURL: string;
-  promoteCreateDate: string;
-  promoteExpireDate: string;
-  promoteDiscountRate: number;
+  promotePictureURL?: string;
+  promoteCreateDate?: string;
+  promoteExpireDate?: string;
+  promoteDiscountRate?: number;
 }
 
 interface SupporterData {
@@ -126,6 +158,7 @@ interface SupporterData {
   storeImages?: ImgItem[];
   isOrderingEnabled?: boolean;
   promotion?: PromotionData;
+  [k: string]: any;
 }
 
 export default function SupporterDashboard() {
@@ -134,19 +167,16 @@ export default function SupporterDashboard() {
   const [slug, setSlug] = useState<string | null>(null);
   const [supporterData, setSupporterData] = useState<SupporterData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // language state: default English, auto-switch to Chinese if browser is zh
   const [lang, setLang] = useState<"en" | "zh">("en");
-
-  const t = (key: keyof typeof translations["en"]) => translations[lang][key];
-
-  // ---- Detect browser language once ----
   useEffect(() => {
-    const browserLang = navigator.language || navigator.languages[0];
-    if (browserLang.toLowerCase().startsWith("zh")) {
-      setLang("zh");
-    } else {
-      setLang("en");
+    if (typeof navigator !== "undefined") {
+      const nav = navigator.language || navigator.languages?.[0] || "en";
+      if (nav.toLowerCase().startsWith("zh")) setLang("zh");
     }
   }, []);
+  const t = (key: keyof typeof translations["en"]) => translations[lang][key];
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -154,39 +184,53 @@ export default function SupporterDashboard() {
         setUser(null);
         setRole(null);
         setSlug(null);
+        setSupporterData(null);
         setLoading(false);
         return;
       }
 
       setUser(firebaseUser);
 
-      const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
-      if (userDoc.exists()) {
-        const data = userDoc.data();
-        setRole(data.role);
+      try {
+        const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
+        if (userDoc.exists()) {
+          const data: any = userDoc.data();
+          setRole(data.role);
 
-        if (data.role === "supporter" && data.ownedSupporterId) {
-          // Support both string and array
-          const supporterIds = Array.isArray(data.ownedSupporterId)
-            ? data.ownedSupporterId
-            : [data.ownedSupporterId];
+          // If user is supporter and has ownedSupporterId(s)
+          if (data.role === "supporter" && data.ownedSupporterId) {
+            // Normalize: if a string -> convert to [string], if array -> use as is
+            const ids: string[] = Array.isArray(data.ownedSupporterId)
+              ? data.ownedSupporterId
+              : [data.ownedSupporterId];
 
-          // For now, pick the first supporter
-          const supporterId = supporterIds[0];
-          setSlug(supporterId);
+            if (ids.length > 0) {
+              const firstId = ids[0];
+              setSlug(firstId);
 
-          const supporterDoc = await getDoc(doc(db, "supporters", supporterId));
-          if (supporterDoc.exists()) {
-            setSupporterData(supporterDoc.data() as SupporterData);
+              // fetch the supporter document
+              const supporterDoc = await getDoc(doc(db, "supporters", firstId));
+              if (supporterDoc.exists()) {
+                setSupporterData(supporterDoc.data() as SupporterData);
+              } else {
+                console.warn("Supporter doc not found for id:", firstId);
+              }
+            }
           }
+        } else {
+          console.error("User document not found for uid:", firebaseUser.uid);
         }
+      } catch (err) {
+        console.error("Error loading user/supporter data:", err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
+
     return () => unsub();
   }, []);
 
-  // ---- Delete handlers ----
+  // delete handlers (menu / recommendation / store image)
   const handleDeleteMenu = async (itemToDelete: MenuItem) => {
     if (!slug) return;
     try {
@@ -196,11 +240,11 @@ export default function SupporterDashboard() {
       await updateDoc(doc(db, "supporters", slug), {
         menu: arrayRemove(itemToDelete),
       });
-      alert("Menu item deleted!");
+      alert(t("menuDeleted"));
       window.location.reload();
     } catch (err) {
       console.error(err);
-      alert("Delete failed.");
+      alert(t("deleteFailed"));
     }
   };
 
@@ -213,11 +257,11 @@ export default function SupporterDashboard() {
       await updateDoc(doc(db, "supporters", slug), {
         recommendations: arrayRemove(recToDelete),
       });
-      alert("Recommendation deleted!");
+      alert(t("recommendationDeleted"));
       window.location.reload();
     } catch (err) {
       console.error(err);
-      alert("Delete failed.");
+      alert(t("deleteFailed"));
     }
   };
 
@@ -230,55 +274,66 @@ export default function SupporterDashboard() {
       await updateDoc(doc(db, "supporters", slug), {
         storeImages: arrayRemove(imgToDelete),
       });
-      alert("Store image deleted!");
+      alert(t("storeImageDeleted"));
       window.location.reload();
     } catch (err) {
       console.error(err);
-      alert("Delete failed.");
+      alert(t("deleteFailed"));
     }
   };
 
+  // delete promotion (with confirmation and storage cleanup)
   const handleDeletePromotion = async () => {
     if (!slug || !supporterData?.promotion) return;
 
-    if (window.confirm("Are you sure you want to delete this promotion?")) {
-      try {
-        if (supporterData.promotion.promotePictureURL) {
-          const imageRef = storageRef(
-            storage,
-            `promotion/${slug}/${supporterData.promotion.promotePictureURL
-              .split("/")
-              .pop()}`
-          );
-          await deleteObject(imageRef);
+    if (!window.confirm(t("confirmDeletePromotion"))) return;
+
+    try {
+      const imageUrl = supporterData.promotion.promotePictureURL;
+      if (imageUrl) {
+        // try to find filename and delete from storage if we stored path previously
+        // If promotePictureURL is a full URL in Firebase Storage, we attempt best-effort deletion by extracting last segment
+        const fileName = imageUrl.split("/").pop();
+        if (fileName) {
+          const imageRef = storageRef(storage, `promotion/${slug}/${fileName}`);
+          await deleteObject(imageRef).catch((err) => {
+            // don't block if deletion fails (maybe URL is external); log it
+            console.warn("Promotion image deletion warning:", err);
+          });
         }
-        await updateDoc(doc(db, "supporters", slug), {
-          promotion: deleteField(),
-        });
-        alert("Promotion deleted successfully!");
-        setSupporterData((prev) =>
-          prev ? { ...prev, promotion: undefined } : null
-        );
-      } catch (err) {
-        console.error("Error deleting promotion:", err);
-        alert("Failed to delete promotion.");
       }
+
+      await updateDoc(doc(db, "supporters", slug), {
+        promotion: deleteField(),
+      });
+
+      alert(t("promotionDeleted"));
+      // update local state
+      setSupporterData((prev) => (prev ? { ...prev, promotion: undefined } : null));
+    } catch (err) {
+      console.error("Error deleting promotion:", err);
+      alert(t("promotionDeleteFailed"));
     }
   };
 
-  // ---- Render ----
-  if (loading) return <div className="p-4">Loading...</div>;
-  if (!user) return <div className="p-4">Please log in to continue.</div>;
+  if (loading) return <div className="p-4 text-center">{t("loading")}</div>;
+  if (!user) return <div className="p-4 text-center">{t("pleaseLogin")}</div>;
   if (role !== "supporter") {
-    return (
-      <div className="p-4 text-red-600">
-        You do not have access to this page.
-      </div>
-    );
+    return <div className="p-4 text-red-600">{t("noAccess")}</div>;
   }
 
   return (
     <div className="p-6">
+      {/* Language Toggle (initial auto-detect + manual toggle) */}
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={() => setLang((s) => (s === "en" ? "zh" : "en"))}
+          className="px-3 py-1 border rounded"
+        >
+          {lang === "en" ? "中文" : "English"}
+        </button>
+      </div>
+
       <h1 className="text-2xl font-bold mb-4">{t("dashboard")}</h1>
 
       {supporterData ? (
@@ -306,8 +361,7 @@ export default function SupporterDashboard() {
               <strong>{t("zip")}:</strong> {supporterData.zipCode}
             </p>
             <p>
-              <strong>{t("businessHours")}:</strong>{" "}
-              {supporterData.businessHours}
+              <strong>{t("businessHours")}:</strong> {supporterData.businessHours}
             </p>
             <p>
               <strong>{t("orderingStatus")}:</strong>
@@ -318,14 +372,11 @@ export default function SupporterDashboard() {
                     : "text-red-600 font-bold ml-2"
                 }
               >
-                {supporterData.isOrderingEnabled
-                  ? t("enabled")
-                  : t("disabled")}
+                {supporterData.isOrderingEnabled ? t("enabled") : t("disabled")}
               </span>
             </p>
           </div>
 
-          {/* Action buttons */}
           <div className="flex flex-wrap gap-2">
             <Link
               href={`/supporter-dashboard/edit`}
@@ -372,63 +423,36 @@ export default function SupporterDashboard() {
             )}
           </div>
 
-          {/* Promotion */}
           {supporterData.promotion && (
             <div className="mt-6">
-              <h2 className="text-xl font-semibold mb-2">
-                {t("currentPromotion")}
-              </h2>
+              <h2 className="text-xl font-semibold mb-2">{t("currentPromotion")}</h2>
               <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 shadow-sm space-y-2">
                 <p>
-                  <strong>{t("promotionName")}:</strong>{" "}
-                  {supporterData.promotion.promoteName}
+                  <strong>{t("promotionName")}:</strong> {supporterData.promotion.promoteName}
                 </p>
                 <p>
-                  <strong>{t("promotionCode")}:</strong>{" "}
-                  {supporterData.promotion.promoteCode}
+                  <strong>{t("promotionCode")}:</strong> {supporterData.promotion.promoteCode}
                 </p>
                 <p>
                   <strong>{t("promotionStatus")}:</strong>
-                  <span
-                    className={`ml-1 font-bold ${
-                      supporterData.promotion.promoteStatus
-                        ? "text-green-600"
-                        : "text-red-600"
-                    }`}
-                  >
-                    {supporterData.promotion.promoteStatus
-                      ? t("enabled")
-                      : t("disabled")}
+                  <span className={`ml-1 font-bold ${supporterData.promotion.promoteStatus ? "text-green-600" : "text-red-600"}`}>
+                    {supporterData.promotion.promoteStatus ? t("enabled") : t("disabled")}
                   </span>
                 </p>
                 <p>
                   <strong>{t("promotionDates")}:</strong>{" "}
-                  {new Date(
-                    supporterData.promotion.promoteCreateDate
-                  ).toLocaleDateString()}{" "}
+                  {supporterData.promotion.promoteCreateDate ? new Date(supporterData.promotion.promoteCreateDate).toLocaleDateString() : "—"}{" "}
                   -{" "}
-                  {new Date(
-                    supporterData.promotion.promoteExpireDate
-                  ).toLocaleDateString()}
+                  {supporterData.promotion.promoteExpireDate ? new Date(supporterData.promotion.promoteExpireDate).toLocaleDateString() : "—"}
                 </p>
                 {supporterData.promotion.promotePictureURL && (
-                  <img
-                    src={supporterData.promotion.promotePictureURL}
-                    alt="Promotion"
-                    className="w-32 h-32 object-cover rounded-md"
-                  />
+                  <img src={supporterData.promotion.promotePictureURL} alt="Promotion" className="w-32 h-32 object-cover rounded-md" />
                 )}
                 <div className="flex gap-2 mt-4">
-                  <Link
-                    href={`/supporter-dashboard/add-promotion`}
-                    className="inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                  >
+                  <Link href={`/supporter-dashboard/add-promotion`} className="inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
                     {t("editPromotion")}
                   </Link>
-                  <button
-                    onClick={handleDeletePromotion}
-                    className="inline-block bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-                  >
+                  <button onClick={handleDeletePromotion} className="inline-block bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
                     {t("deletePromotion")}
                   </button>
                 </div>
@@ -439,36 +463,18 @@ export default function SupporterDashboard() {
           {/* Menu items */}
           {supporterData.menu && supporterData.menu.length > 0 && (
             <div className="mt-6">
-              <h2 className="text-xl font-semibold mb-2">
-                {t("menuItems")}
-              </h2>
-              <Link
-                href={`/supporter-dashboard/reorder-menu`}
-                className="inline-block bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 mb-4"
-              >
+              <h2 className="text-xl font-semibold mb-2">{t("menuItems")}</h2>
+              <Link href={`/supporter-dashboard/reorder-menu`} className="inline-block bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 mb-4">
                 {t("reorderMenu")}
               </Link>
               {supporterData.menu.map((item, index) => (
-                <div
-                  key={index}
-                  className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded"
-                >
+                <div key={index} className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded">
                   <span>{item.name}</span>
                   <div className="flex gap-2">
-                    <Link
-                      href={`/supporter-dashboard/edit-menu-item/${encodeURIComponent(
-                        item.name
-                      )}`}
-                      className="text-blue-600 hover:text-blue-700"
-                    >
-                      Edit
+                    <Link href={`/supporter-dashboard/edit-menu-item/${encodeURIComponent(item.name)}`} className="text-blue-600 hover:text-blue-700">
+                      {t("edit")}
                     </Link>
-                    <button
-                      onClick={() => handleDeleteMenu(item)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      Delete
-                    </button>
+                    <button onClick={() => handleDeleteMenu(item)} className="text-red-600 hover:text-red-700">{t("delete")}</button>
                   </div>
                 </div>
               ))}
@@ -476,92 +482,53 @@ export default function SupporterDashboard() {
           )}
 
           {/* Recommendations */}
-          {supporterData.recommendations &&
-            supporterData.recommendations.length > 0 && (
-              <div className="mt-6">
-                <h2 className="text-xl font-semibold mb-2">
-                  {t("recDishes")}
-                </h2>
-                <Link
-                  href={`/supporter-dashboard/reorder-recommendations`}
-                  className="inline-block bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 mb-4"
-                >
-                  {t("reorderRecs")}
-                </Link>
-                {supporterData.recommendations.map((rec, index) => (
-                  <div
-                    key={index}
-                    className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded"
-                  >
-                    <span>{rec.name}</span>
-                    <div className="flex gap-2">
-                      <Link
-                        href={`/supporter-dashboard/edit-recommendation/${encodeURIComponent(
-                          rec.name
-                        )}`}
-                        className="text-blue-600 hover:text-blue-700"
-                      >
-                        Edit
-                      </Link>
-                      <button
-                        onClick={() => handleDeleteRecommendation(rec)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        Delete
-                      </button>
-                    </div>
+          {supporterData.recommendations && supporterData.recommendations.length > 0 && (
+            <div className="mt-6">
+              <h2 className="text-xl font-semibold mb-2">{t("recDishes")}</h2>
+              <Link href={`/supporter-dashboard/reorder-recommendations`} className="inline-block bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 mb-4">
+                {t("reorderRecs")}
+              </Link>
+              {supporterData.recommendations.map((rec, index) => (
+                <div key={index} className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded">
+                  <span>{rec.name}</span>
+                  <div className="flex gap-2">
+                    <Link href={`/supporter-dashboard/edit-recommendation/${encodeURIComponent(rec.name)}`} className="text-blue-600 hover:text-blue-700">
+                      {t("edit")}
+                    </Link>
+                    <button onClick={() => handleDeleteRecommendation(rec)} className="text-red-600 hover:text-red-700">{t("delete")}</button>
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Store Images */}
-          {supporterData.storeImages &&
-            supporterData.storeImages.length > 0 && (
-              <div className="mt-6">
-                <h2 className="text-xl font-semibold mb-2">
-                  {t("storePhotos")}
-                </h2>
-                <Link
-                  href={`/supporter-dashboard/reorder-store-photos`}
-                  className="inline-block bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 mb-4"
-                >
-                  {t("reorderPhotos")}
-                </Link>
-                {supporterData.storeImages.map((img: any, index) => (
-                  <div
-                    key={index}
-                    className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded"
-                  >
-                    <div className="flex items-center gap-2">
-                      {img.url && (
-                        <img
-                          src={img.url}
-                          alt={img.name}
-                          className="h-12 w-12 object-cover rounded"
-                        />
-                      )}
-                      <span>{img.name}</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <Link
-                        href={`/supporter-dashboard/edit-store-photo/${encodeURIComponent(
-                          img.name
-                        )}`}
-                        className="text-blue-600 hover:text-blue-700"
-                      >
-                        Edit
-                      </Link>
-                      <button
-                        onClick={() => handleDeleteStoreImage(img)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        Delete
-                      </button>
-                    </div>
+          {supporterData.storeImages && supporterData.storeImages.length > 0 && (
+            <div className="mt-6">
+              <h2 className="text-xl font-semibold mb-2">{t("storePhotos")}</h2>
+              <Link href={`/supporter-dashboard/reorder-store-photos`} className="inline-block bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 mb-4">
+                {t("reorderPhotos")}
+              </Link>
+              {supporterData.storeImages.map((img: any, index) => (
+                <div key={index} className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded">
+                  <div className="flex items-center gap-2">
+                    {img.url && <img src={img.url} alt={img.name} className="h-12 w-12 object-cover rounded" />}
+                    <span>{img.name}</span>
                   </div>
-                ))}
-              </div>
-            )}
+                  <div className="flex gap-2">
+                    <Link href={`/supporter-dashboard/edit-store-photo/${encodeURIComponent(img.name)}`} className="text-blue-600 hover:text-blue-700">
+                      {t("edit")}
+                    </Link>
+                    <button onClick={() => handleDeleteStoreImage(img)} className="text-red-600 hover:text-red-700">{t("delete")}</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-     
+      ) : (
+        <p>{t("noSupporterRecord")}</p>
+      )}
+    </div>
+  );
+}
