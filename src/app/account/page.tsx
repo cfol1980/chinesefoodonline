@@ -36,15 +36,18 @@ export default function AccountPage() {
     useState<ConfirmationResult | null>(null);
   const [error, setError] = useState("");
 
+  // Language toggle (English = true, 中文 = false)
+  const [english, setEnglish] = useState(true);
+
   // Helper function to format US phone numbers to E.164 format
   const formatUSPhoneNumber = (number: string): string | null => {
-    const cleaned = number.replace(/\D/g, ""); // Remove all non-digit chars
+    const cleaned = number.replace(/\D/g, ""); // Remove all non-digit characters
     if (cleaned.length === 10) {
-      return `+1${cleaned}`; // 10-digit → +1 prefix
+      return `+1${cleaned}`; // Prepend +1 for 10-digit numbers
     } else if (cleaned.length === 11 && cleaned.startsWith("1")) {
-      return `+${cleaned}`; // 11-digit w/leading 1 → keep as is
+      return `+${cleaned}`; // Prepend + for 11-digit numbers starting with 1
     }
-    return null;
+    return null; // Return null if format is invalid
   };
 
   const handleGoogleLogin = async () => {
@@ -78,7 +81,11 @@ export default function AccountPage() {
 
     const formattedPhoneNumber = formatUSPhoneNumber(phoneNumber);
     if (!formattedPhoneNumber) {
-      setError("Please enter a valid 10-digit US phone number.");
+      setError(
+        english
+          ? "Please enter a valid 10-digit US phone number."
+          : "请输入有效的10位美国电话号码。"
+      );
       return;
     }
 
@@ -92,24 +99,36 @@ export default function AccountPage() {
       );
       setConfirmationResult(result);
     } catch (err: any) {
-      setError(`Error sending OTP: ${err.message}`);
+      setError(
+        english
+          ? `Error sending OTP: ${err.message}`
+          : `发送验证码错误: ${err.message}`
+      );
     }
   };
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!confirmationResult) return setError("Please request an OTP first.");
-    if (!otp) return setError("Please enter the OTP.");
+    if (!confirmationResult)
+      return setError(
+        english ? "Please request an OTP first." : "请先请求验证码。"
+      );
+    if (!otp)
+      return setError(english ? "Please enter the OTP." : "请输入验证码。");
 
     try {
       await confirmationResult.confirm(otp);
     } catch (err: any) {
-      setError(`Error verifying OTP: ${err.message}`);
+      setError(
+        english
+          ? `Error verifying OTP: ${err.message}`
+          : `验证验证码错误: ${err.message}`
+      );
     }
   };
 
-  // --- Auth State & Firestore user creation ---
+  // Listen for auth state changes and manage user document
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
@@ -120,11 +139,10 @@ export default function AccountPage() {
         if (userSnap.exists()) {
           setRole(userSnap.data().role);
         } else {
-          // Create a new user profile.
-          // Note: "name" field is treated as 商店名字 (Store Name).
+          // Create a new user profile
           const newUserProfile = {
             email: firebaseUser.email || null,
-            name: "", // 商店名字 left blank initially
+            name: firebaseUser.displayName || "",
             displayName: firebaseUser.displayName || "",
             photoURL: firebaseUser.photoURL || "",
             phone: firebaseUser.phoneNumber || "",
@@ -160,8 +178,21 @@ export default function AccountPage() {
   if (!user) {
     return (
       <div className="p-6 text-center max-w-sm mx-auto">
-        <h1 className="text-2xl font-bold mb-4">Welcome</h1>
-        <p className="mb-6">Please sign in to manage your account.</p>
+        <button
+          onClick={() => setEnglish(!english)}
+          className="mb-4 text-sm text-blue-600 underline"
+        >
+          {english ? "切换到中文" : "Switch to English"}
+        </button>
+
+        <h1 className="text-2xl font-bold mb-4">
+          {english ? "Welcome" : "欢迎"}
+        </h1>
+        <p className="mb-6">
+          {english
+            ? "Please sign in to manage your account."
+            : "请登录以管理您的账户。"}
+        </p>
 
         <div id="recaptcha-container"></div>
 
@@ -171,13 +202,13 @@ export default function AccountPage() {
               onClick={handleGoogleLogin}
               className="w-full bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
             >
-              Sign in with Google
+              {english ? "Sign in with Google" : "使用 Google 登录"}
             </button>
             <button
               onClick={() => setLoginMethod("phone")}
               className="mt-2 text-sm text-blue-500 hover:underline"
             >
-              Sign in with Phone Number
+              {english ? "Sign in with Phone Number" : "使用手机号登录"}
             </button>
           </div>
         ) : (
@@ -189,14 +220,14 @@ export default function AccountPage() {
                     htmlFor="phone-input"
                     className="block text-sm font-medium text-gray-700 text-left mb-1"
                   >
-                    Phone Number (US only)
+                    {english ? "Phone Number (US only)" : "手机号（仅限美国）"}
                   </label>
                   <input
                     id="phone-input"
                     type="tel"
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="(555) 123-4567"
+                    placeholder={english ? "(555) 123-4567" : "（555）123-4567"}
                     className="w-full p-2 border rounded text-black"
                     required
                   />
@@ -205,7 +236,7 @@ export default function AccountPage() {
                   type="submit"
                   className="w-full bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
                 >
-                  Send Code
+                  {english ? "Send Code" : "发送验证码"}
                 </button>
               </form>
             ) : (
@@ -214,7 +245,7 @@ export default function AccountPage() {
                   type="text"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
-                  placeholder="6-digit code"
+                  placeholder={english ? "6-digit code" : "6位验证码"}
                   className="w-full p-2 border rounded text-black"
                   required
                 />
@@ -222,7 +253,7 @@ export default function AccountPage() {
                   type="submit"
                   className="w-full bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
                 >
-                  Verify & Sign In
+                  {english ? "Verify & Sign In" : "验证并登录"}
                 </button>
               </form>
             )}
@@ -233,7 +264,7 @@ export default function AccountPage() {
               }}
               className="mt-2 text-sm text-blue-500 hover:underline"
             >
-              Back to Google Sign-in
+              {english ? "Back to Google Sign-in" : "返回 Google 登录"}
             </button>
           </div>
         )}
@@ -245,7 +276,17 @@ export default function AccountPage() {
   // --- RENDER IF LOGGED IN ---
   return (
     <div className="p-6 max-w-lg mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Account Overview</h1>
+      <button
+        onClick={() => setEnglish(!english)}
+        className="mb-4 text-sm text-blue-600 underline"
+      >
+        {english ? "切换到中文" : "Switch to English"}
+      </button>
+
+      <h1 className="text-2xl font-bold mb-4">
+        {english ? "Account Overview" : "账户概览"}
+      </h1>
+
       <div className="flex items-center mb-6">
         {user.photoURL ? (
           <Image
@@ -263,9 +304,13 @@ export default function AccountPage() {
           </div>
         )}
         <div>
-          <p className="font-semibold">{user.displayName || "New User"}</p>
+          <p className="font-semibold">
+            {user.displayName || (english ? "New User" : "新用户")}
+          </p>
           <p className="text-gray-600">{user.email || user.phoneNumber}</p>
-          <p className="text-sm capitalize text-gray-500 mt-1">Role: {role}</p>
+          <p className="text-sm capitalize text-gray-500 mt-1">
+            {english ? "Role:" : "角色:"} {role}
+          </p>
         </div>
       </div>
 
@@ -274,14 +319,14 @@ export default function AccountPage() {
           href="/profile"
           className="block w-full text-center bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
         >
-          Edit My Profile
+          {english ? "Edit My Profile" : "编辑我的资料"}
         </Link>
         {role === "admin" && (
           <Link
             href="/admin"
             className="block w-full text-center bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
           >
-            Go to Admin Panel
+            {english ? "Go to Admin Panel" : "进入管理员面板"}
           </Link>
         )}
         {role === "supporter" && (
@@ -289,7 +334,7 @@ export default function AccountPage() {
             href={`/supporter-dashboard`}
             className="block w-full text-center bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
           >
-            Manage My Supporter Profile
+            {english ? "Manage My Supporter Profile" : "管理我的商家资料"}
           </Link>
         )}
         {role === "contributor" && (
@@ -297,7 +342,7 @@ export default function AccountPage() {
             href="/contributor"
             className="block w-full text-center bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
           >
-            Go to Contributor Tools
+            {english ? "Go to Contributor Tools" : "进入贡献者工具"}
           </Link>
         )}
       </div>
@@ -306,7 +351,7 @@ export default function AccountPage() {
         onClick={handleLogout}
         className="w-full bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
       >
-        Sign Out
+        {english ? "Sign Out" : "退出登录"}
       </button>
     </div>
   );
