@@ -38,6 +38,15 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [saving, setSaving] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [isChinese, setIsChinese] = useState(false);
+
+  // Detect browser language once
+  useEffect(() => {
+    const lang = navigator.language || navigator.languages?.[0] || "en";
+    if (lang.toLowerCase().startsWith("zh")) {
+      setIsChinese(true);
+    }
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -91,16 +100,16 @@ export default function ProfilePage() {
       const userRef = doc(db, 'users', user.uid);
 
       const updates = {
-        email: profile.email ?? "", // Allow email to be updated
+        email: profile.email ?? "",
         name: profile.name ?? "",
         displayName: profile.displayName ?? "",
         city: profile.city ?? "",
         state: profile.state ?? "",
         zip: profile.zip ?? "",
         country: profile.country ?? "",
-        phone: profile.phone ?? "", // already formatted
+        phone: profile.phone ?? "",
         bio: profile.bio ?? "",
-        wechatId: profile.wechatId ?? "", // Include wechatId in the update
+        wechatId: profile.wechatId ?? "",
       };
 
       await updateDoc(userRef, updates);
@@ -131,14 +140,14 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-2xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">Your Profile</h1>
+      <h1 className="text-3xl font-bold mb-6">{isChinese ? "个人资料" : "Your Profile"}</h1>
 
       {/* Editable form */}
       <div className="space-y-4">
         {/* Email Input Field */}
         <div>
           <label htmlFor="email" className="block text-sm font-medium">
-            Email
+            {isChinese ? "电子邮箱" : "Email"}
           </label>
           <input
             type="email"
@@ -153,7 +162,7 @@ export default function ProfilePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label htmlFor="displayName" className="block text-sm font-medium">
-              Display Name
+              {isChinese ? "显示名字" : "Display Name"}
             </label>
             <input
               type="text"
@@ -166,7 +175,7 @@ export default function ProfilePage() {
           </div>
           <div>
             <label htmlFor="name" className="block text-sm font-medium">
-              Full Name
+              {isChinese ? "姓名" : "Full Name"}
             </label>
             <input
               type="text"
@@ -181,7 +190,7 @@ export default function ProfilePage() {
 
         <div>
           <label htmlFor="bio" className="block text-sm font-medium">
-            Bio / About Me
+            {isChinese ? "简介" : "Bio / About Me"}
           </label>
           <textarea
             name="bio"
@@ -193,10 +202,9 @@ export default function ProfilePage() {
           ></textarea>
         </div>
 
-        {/* WeChat ID Input Field */}
         <div>
           <label htmlFor="wechatId" className="block text-sm font-medium">
-            WeChat ID
+            {isChinese ? "微信号" : "WeChat ID"}
           </label>
           <input
             type="text"
@@ -208,10 +216,9 @@ export default function ProfilePage() {
           />
         </div>
 
-        {/* Phone with inline error */}
         <div>
           <label htmlFor="phone" className="block text-sm font-medium">
-            Phone Number
+            {isChinese ? "电话号码" : "Phone Number"}
           </label>
           <input
             type="text"
@@ -231,7 +238,7 @@ export default function ProfilePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label htmlFor="city" className="block text-sm font-medium">
-              City
+              {isChinese ? "城市" : "City"}
             </label>
             <input
               type="text"
@@ -244,7 +251,7 @@ export default function ProfilePage() {
           </div>
           <div>
             <label htmlFor="state" className="block text-sm font-medium">
-              State / Province
+              {isChinese ? "州/省份" : "State / Province"}
             </label>
             <input
               type="text"
@@ -260,7 +267,7 @@ export default function ProfilePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label htmlFor="zip" className="block text-sm font-medium">
-              ZIP / Postal Code
+              {isChinese ? "邮政编码" : "ZIP / Postal Code"}
             </label>
             <input
               type="text"
@@ -273,7 +280,7 @@ export default function ProfilePage() {
           </div>
           <div>
             <label htmlFor="country" className="block text-sm font-medium">
-              Country
+              {isChinese ? "国家" : "Country"}
             </label>
             <input
               type="text"
@@ -292,12 +299,12 @@ export default function ProfilePage() {
         disabled={saving || !!phoneError}
         className="mt-6 w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
       >
-        {saving ? 'Saving...' : 'Save Profile'}
+        {saving ? (isChinese ? "保存中..." : "Saving...") : (isChinese ? "保存资料" : "Save Profile")}
       </button>
 
       <div className="text-center mt-6">
         <Link href="/account" className="text-blue-600 underline">
-          Back to Account
+          {isChinese ? "返回账户" : "Back to Account"}
         </Link>
       </div>
     </div>

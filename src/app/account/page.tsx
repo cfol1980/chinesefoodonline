@@ -35,17 +35,26 @@ export default function AccountPage() {
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [error, setError] = useState("");
 
+  // Language detection
+  const [isChinese, setIsChinese] = useState(false);
+
+  useEffect(() => {
+    if (typeof navigator !== "undefined") {
+      setIsChinese(navigator.language.startsWith("zh"));
+    }
+  }, []);
+
   // Helper function to format US phone numbers to E.164 format
   const formatUSPhoneNumber = (number: string): string | null => {
-    const cleaned = number.replace(/\D/g, ''); // Remove all non-digit characters
+    const cleaned = number.replace(/\D/g, ""); // Remove all non-digit characters
     if (cleaned.length === 10) {
       return `+1${cleaned}`; // Prepend +1 for 10-digit numbers
-    } else if (cleaned.length === 11 && cleaned.startsWith('1')) {
+    } else if (cleaned.length === 11 && cleaned.startsWith("1")) {
       return `+${cleaned}`; // Prepend + for 11-digit numbers starting with 1
     }
     return null; // Return null if format is invalid
   };
-  
+
   const handleGoogleLogin = async () => {
     const provider = new GoogleAuthProvider();
     await signInWithPopup(auth, provider).catch((err) => setError(err.message));
@@ -59,14 +68,14 @@ export default function AccountPage() {
   const setupRecaptcha = () => {
     if (typeof window !== "undefined" && !window.recaptchaVerifier) {
       window.recaptchaVerifier = new RecaptchaVerifier(
-        "recaptcha-container", // 1. The container ID
-        {                      // 2. The parameters
+        "recaptcha-container",
+        {
           size: "invisible",
           callback: () => {
             console.log("reCAPTCHA solved");
           },
         },
-        auth                   // 3. The auth object
+        auth
       );
     }
   };
@@ -77,7 +86,7 @@ export default function AccountPage() {
 
     const formattedPhoneNumber = formatUSPhoneNumber(phoneNumber);
     if (!formattedPhoneNumber) {
-      setError("Please enter a valid 10-digit US phone number.");
+      setError(isChinese ? "请输入有效的美国电话号码。" : "Please enter a valid 10-digit US phone number.");
       return;
     }
 
@@ -87,23 +96,23 @@ export default function AccountPage() {
       const result = await signInWithPhoneNumber(auth, formattedPhoneNumber, appVerifier);
       setConfirmationResult(result);
     } catch (err: any) {
-      setError(`Error sending OTP: ${err.message}`);
+      setError((isChinese ? "发送验证码时出错: " : "Error sending OTP: ") + err.message);
     }
   };
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!confirmationResult) return setError("Please request an OTP first.");
-    if (!otp) return setError("Please enter the OTP.");
+    if (!confirmationResult) return setError(isChinese ? "请先请求验证码。" : "Please request an OTP first.");
+    if (!otp) return setError(isChinese ? "请输入验证码。" : "Please enter the OTP.");
 
     try {
       await confirmationResult.confirm(otp);
     } catch (err: any) {
-      setError(`Error verifying OTP: ${err.message}`);
+      setError((isChinese ? "验证验证码时出错: " : "Error verifying OTP: ") + err.message);
     }
   };
-  
+
   // Listen for auth state changes and manage user document
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -115,7 +124,6 @@ export default function AccountPage() {
         if (userSnap.exists()) {
           setRole(userSnap.data().role);
         } else {
-          // Create a new user profile, handling both Google and Phone providers
           const newUserProfile = {
             email: firebaseUser.email || null,
             name: firebaseUser.displayName || "",
@@ -147,16 +155,16 @@ export default function AccountPage() {
   }, []);
 
   if (loading) {
-    return <div className="p-6 text-center">Loading...</div>;
+    return <div className="p-6 text-center">{isChinese ? "加载中..." : "Loading..."}</div>;
   }
 
   // --- RENDER IF NOT LOGGED IN ---
   if (!user) {
     return (
       <div className="p-6 text-center max-w-sm mx-auto">
-        <h1 className="text-2xl font-bold mb-4">Welcome</h1>
-        <p className="mb-6">Please sign in to manage your account.</p>
-        
+        <h1 className="text-2xl font-bold mb-4">{isChinese ? "欢迎" : "Welcome"}</h1>
+        <p className="mb-6">{isChinese ? "请登录以管理您的账户。" : "Please sign in to manage your account."}</p>
+
         <div id="recaptcha-container"></div>
 
         {loginMethod === "google" ? (
@@ -165,13 +173,13 @@ export default function AccountPage() {
               onClick={handleGoogleLogin}
               className="w-full bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
             >
-              Sign in with Google
+              {isChinese ? "使用 Google 登录" : "Sign in with Google"}
             </button>
             <button
               onClick={() => setLoginMethod("phone")}
               className="mt-2 text-sm text-blue-500 hover:underline"
             >
-              Sign in with Phone Number
+              {isChinese ? "使用电话号码登录" : "Sign in with Phone Number"}
             </button>
           </div>
         ) : (
@@ -179,21 +187,27 @@ export default function AccountPage() {
             {!confirmationResult ? (
               <form onSubmit={handleSendOtp} className="space-y-4">
                 <div>
-                  <label htmlFor="phone-input" className="block text-sm font-medium text-gray-700 text-left mb-1">
-                    Phone Number (US only)
+                  <label
+                    htmlFor="phone-input"
+                    className="block text-sm font-medium text-gray-700 text-left mb-1"
+                  >
+                    {isChinese ? "电话号码 (仅限美国)" : "Phone Number (US only)"}
                   </label>
                   <input
                     id="phone-input"
                     type="tel"
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="(555) 123-4567"
+                    placeholder={isChinese ? "例如: (555) 123-4567" : "(555) 123-4567"}
                     className="w-full p-2 border rounded text-black"
                     required
                   />
                 </div>
-                <button type="submit" className="w-full bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
-                  Send Code
+                <button
+                  type="submit"
+                  className="w-full bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
+                >
+                  {isChinese ? "发送验证码" : "Send Code"}
                 </button>
               </form>
             ) : (
@@ -202,23 +216,26 @@ export default function AccountPage() {
                   type="text"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
-                  placeholder="6-digit code"
+                  placeholder={isChinese ? "6位验证码" : "6-digit code"}
                   className="w-full p-2 border rounded text-black"
                   required
                 />
-                <button type="submit" className="w-full bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
-                  Verify & Sign In
+                <button
+                  type="submit"
+                  className="w-full bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
+                >
+                  {isChinese ? "验证并登录" : "Verify & Sign In"}
                 </button>
               </form>
             )}
-             <button
+            <button
               onClick={() => {
                 setLoginMethod("google");
                 setError("");
               }}
               className="mt-2 text-sm text-blue-500 hover:underline"
             >
-              Back to Google Sign-in
+              {isChinese ? "返回 Google 登录" : "Back to Google Sign-in"}
             </button>
           </div>
         )}
@@ -230,7 +247,7 @@ export default function AccountPage() {
   // --- RENDER IF LOGGED IN ---
   return (
     <div className="p-6 max-w-lg mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Account Overview</h1>
+      <h1 className="text-2xl font-bold mb-4">{isChinese ? "账户概览" : "Account Overview"}</h1>
       <div className="flex items-center mb-6">
         {user.photoURL ? (
           <Image
@@ -242,33 +259,47 @@ export default function AccountPage() {
           />
         ) : (
           <div className="w-16 h-16 rounded-full mr-4 bg-gray-200 flex items-center justify-center text-gray-500 text-2xl font-bold">
-            {user.displayName?.charAt(0) || user.phoneNumber?.slice(-4,-2) || '?'}
+            {user.displayName?.charAt(0) || user.phoneNumber?.slice(-4, -2) || "?"}
           </div>
         )}
         <div>
-          <p className="font-semibold">{user.displayName || 'New User'}</p>
+          <p className="font-semibold">{user.displayName || (isChinese ? "新用户" : "New User")}</p>
           <p className="text-gray-600">{user.email || user.phoneNumber}</p>
-          <p className="text-sm capitalize text-gray-500 mt-1">Role: {role}</p>
+          <p className="text-sm capitalize text-gray-500 mt-1">
+            {isChinese ? "角色: " : "Role: "} {role}
+          </p>
         </div>
       </div>
-      
+
       <div className="space-y-3 mb-6">
-        <Link href="/profile" className="block w-full text-center bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-          Edit My Profile
+        <Link
+          href="/profile"
+          className="block w-full text-center bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+          {isChinese ? "编辑我的资料" : "Edit My Profile"}
         </Link>
         {role === "admin" && (
-          <Link href="/admin" className="block w-full text-center bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-            Go to Admin Panel
+          <Link
+            href="/admin"
+            className="block w-full text-center bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+          >
+            {isChinese ? "进入管理员面板" : "Go to Admin Panel"}
           </Link>
         )}
         {role === "supporter" && (
-          <Link href={`/supporter-dashboard`} className="block w-full text-center bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">
-            Manage My Supporter Profile
+          <Link
+            href={`/supporter-dashboard`}
+            className="block w-full text-center bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
+          >
+            {isChinese ? "管理我的支持者资料" : "Manage My Supporter Profile"}
           </Link>
         )}
         {role === "contributor" && (
-          <Link href="/contributor" className="block w-full text-center bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
-            Go to Contributor Tools
+          <Link
+            href="/contributor"
+            className="block w-full text-center bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+          >
+            {isChinese ? "进入贡献者工具" : "Go to Contributor Tools"}
           </Link>
         )}
       </div>
@@ -277,7 +308,7 @@ export default function AccountPage() {
         onClick={handleLogout}
         className="w-full bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
       >
-        Sign Out
+        {isChinese ? "退出登录" : "Sign Out"}
       </button>
     </div>
   );
