@@ -1,53 +1,73 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { auth, db } from "@/lib/firebase";
-import { onAuthStateChanged, User } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import Link from "next/link";
+import { useEffect, useState } from 'react';
+import { auth, db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import Link from 'next/link';
+
+// ---- Types ----
+interface UserProfile {
+  email: string;
+  role?: string;
+  ownedSupporterId?: string | string[];
+}
 
 interface SupporterData {
   name: string;
   description?: string;
-  phone?: string;
   address?: string;
-  city?: string;
-  state?: string;
-  zip?: string;
-  businessHours?: string;
-  isOrderingEnabled?: boolean;
-  promotions?: {
-    id: string;
-    name: string;
-    code: string;
-    status: string;
-    startDate: string;
-    endDate: string;
-  }[];
-  menuItems?: { id: string; name: string; price: number }[];
-  recommendedDishes?: { id: string; name: string }[];
-  storePhotos?: string[];
+  phone?: string;
+  website?: string;
+  [key: string]: any;
 }
 
-export default function SupporterDashboard() {
+export default function SupporterDashboardPage() {
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [supporterData, setSupporterData] = useState<SupporterData | null>(null);
+  const [slug, setSlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isChinese, setIsChinese] = useState(false);
 
+  // Detect browser language
   useEffect(() => {
-    // detect browser language
-    if (typeof navigator !== "undefined") {
-      setIsChinese(navigator.language.startsWith("zh"));
+    if (typeof navigator !== 'undefined') {
+      setIsChinese(navigator.language.startsWith('zh'));
     }
+  }, []);
 
+  useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
       if (currentUser) {
-        const userRef = doc(db, "supporters", currentUser.uid);
-        const snap = await getDoc(userRef);
-        if (snap.exists()) {
-          setSupporterData(snap.data() as SupporterData);
+        setUser(currentUser);
+        const userRef = doc(db, 'users', currentUser.uid);
+        const userSnap = await getDoc(userRef);
+
+        if (userSnap.exists()) {
+          const data = userSnap.data() as UserProfile;
+          setProfile(data);
+
+          if (data.role === 'supporter' && data.ownedSupporterId) {
+            // Normalize ownedSupporterId to array
+            const supporterIds = Array.isArray(data.ownedSupporterId)
+              ? data.ownedSupporterId
+              : [data.ownedSupporterId];
+
+            if (supporterIds.length > 0) {
+              const supporterId = supporterIds[0]; // use only first for now
+              setSlug(supporterId);
+
+              const supporterDoc = await getDoc(doc(db, 'supporters', supporterId));
+              if (supporterDoc.exists()) {
+                setSupporterData(supporterDoc.data() as SupporterData);
+              } else {
+                console.warn('Supporter doc not found:', supporterId);
+              }
+            }
+          }
+        } else {
+          console.error('User document not found!');
         }
       }
       setLoading(false);
@@ -56,203 +76,91 @@ export default function SupporterDashboard() {
     return () => unsubscribe();
   }, []);
 
-  if (loading) return <div className="p-6 text-center">Loading...</div>;
+  if (loading) return <div className="p-6 text-center">{isChinese ? '加载中...' : 'Loading...'}</div>;
 
-  if (!user) {
+  if (!user || !profile) {
     return (
       <div className="p-6 text-center">
         <p>
-          {isChinese ? "请先" : "Please"}{" "}
-          <Link href="/account" className="text-blue-600 underline">
-            {isChinese ? "登录" : "sign in"}
-          </Link>{" "}
-          {isChinese ? "以访问商家后台。" : "to access the supporter dashboard."}
+          {isChinese ? (
+            <>
+              请{' '}
+              <Link href="/account" className="text-blue-600 underline">
+                登录
+              </Link>{' '}
+              查看支持者控制台。
+            </>
+          ) : (
+            <>
+              Please{' '}
+              <Link href="/account" className="text-blue-600 underline">
+                sign in
+              </Link>{' '}
+              to view your supporter dashboard.
+            </>
+          )}
         </p>
       </div>
     );
   }
 
-  if (!supporterData) {
+  if (profile.role !== 'supporter') {
     return (
       <div className="p-6 text-center">
-        {isChinese ? "未找到商家资料。" : "No supporter data found."}
+        {isChinese ? '您没有支持者权限。' : 'You do not have supporter access.'}
+      </div>
+    );
+  }
+
+  if (!slug || !supporterData) {
+    return (
+      <div className="p-6 text-center">
+        {isChinese
+          ? '未找到关联的支持者数据。'
+          : 'No supporter record associated with this account.'}
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-4">
-        {isChinese ? "商家后台" : "Supporter Dashboard"}
+    <div className="max-w-3xl mx-auto p-6">
+      <h1 className="text-3xl font-bold mb-6">
+        {isChinese ? '支持者控制台' : 'Supporter Dashboard'}
       </h1>
 
-      <div className="bg-gray-50 p-4 rounded-lg mb-6 border">
-        <p>
-          <strong>{isChinese ? "商店名字" : "Name"}:</strong>{" "}
-          {supporterData.name}
-        </p>
-        <p>
-          <strong>{isChinese ? "描述" : "Description"}:</strong>{" "}
-          {supporterData.description}
-        </p>
-        <p>
-          <strong>{isChinese ? "电话" : "Phone"}:</strong>{" "}
-          {supporterData.phone}
-        </p>
-        <p>
-          <strong>{isChinese ? "地址" : "Address"}:</strong>{" "}
-          {supporterData.address}, {supporterData.city}, {supporterData.state}{" "}
-          {supporterData.zip}
-        </p>
-        <p>
-          <strong>{isChinese ? "营业时间" : "Business Hours"}:</strong>{" "}
-          {supporterData.businessHours}
-        </p>
-        <p>
-          <strong>{isChinese ? "网上点餐状态" : "Online Ordering Status"}:</strong>
-          <span
-            className={
-              supporterData.isOrderingEnabled
-                ? "text-green-600 font-bold ml-2"
-                : "text-red-600 font-bold ml-2"
-            }
-          >
-            {supporterData.isOrderingEnabled
-              ? isChinese
-                ? "启用"
-                : "Enabled"
-              : isChinese
-              ? "停用"
-              : "Disabled"}
-          </span>
-        </p>
-      </div>
-
-      {/* Actions */}
       <div className="space-y-4">
-        <button className="w-full p-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-          {isChinese ? "编辑商家信息" : "Edit Business Details"}
-        </button>
+        <div>
+          <h2 className="text-xl font-semibold">{supporterData.name}</h2>
+          {supporterData.description && (
+            <p className="text-gray-700 mt-1">{supporterData.description}</p>
+          )}
+        </div>
 
-        <button className="w-full p-2 bg-purple-600 text-white rounded hover:bg-purple-700">
-          {isChinese ? "管理网上订单" : "Manage Online Orders"}
-        </button>
-
-        <button className="w-full p-2 bg-green-600 text-white rounded hover:bg-green-700">
-          {isChinese ? "添加菜单项" : "+ Add Menu Item"}
-        </button>
-
-        <button className="w-full p-2 bg-orange-600 text-white rounded hover:bg-orange-700">
-          {isChinese ? "添加推荐菜" : "+ Add Recommended Dish"}
-        </button>
-
-        <button className="w-full p-2 bg-pink-600 text-white rounded hover:bg-pink-700">
-          {isChinese ? "添加店铺照片" : "+ Add Store Photo"}
-        </button>
-
-        <button className="w-full p-2 bg-yellow-600 text-white rounded hover:bg-yellow-700">
-          {isChinese ? "添加促销活动" : "+ Add Promotion"}
-        </button>
+        {supporterData.address && (
+          <p>
+            <strong>{isChinese ? '地址：' : 'Address:'}</strong> {supporterData.address}
+          </p>
+        )}
+        {supporterData.phone && (
+          <p>
+            <strong>{isChinese ? '电话：' : 'Phone:'}</strong> {supporterData.phone}
+          </p>
+        )}
+        {supporterData.website && (
+          <p>
+            <strong>{isChinese ? '网站：' : 'Website:'}</strong>{' '}
+            <a href={supporterData.website} target="_blank" className="text-blue-600 underline">
+              {supporterData.website}
+            </a>
+          </p>
+        )}
       </div>
 
-      {/* Promotions */}
-      {supporterData.promotions && supporterData.promotions.length > 0 && (
-        <div className="mt-6">
-          <h2 className="text-xl font-semibold mb-2">
-            {isChinese ? "当前促销" : "Current Promotions"}
-          </h2>
-          {supporterData.promotions.map((promo) => (
-            <div
-              key={promo.id}
-              className="border p-3 rounded mb-2 flex justify-between items-center"
-            >
-              <div>
-                <p>
-                  <strong>{isChinese ? "名称" : "Name"}:</strong> {promo.name}
-                </p>
-                <p>
-                  <strong>{isChinese ? "代码" : "Code"}:</strong> {promo.code}
-                </p>
-                <p>
-                  <strong>{isChinese ? "状态" : "Status"}:</strong>{" "}
-                  {promo.status}
-                </p>
-                <p>
-                  <strong>{isChinese ? "日期" : "Dates"}:</strong>{" "}
-                  {promo.startDate} - {promo.endDate}
-                </p>
-              </div>
-              <div className="space-x-2">
-                <button className="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">
-                  {isChinese ? "编辑" : "Edit"}
-                </button>
-                <button className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600">
-                  {isChinese ? "删除" : "Delete"}
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Menu Items */}
-      {supporterData.menuItems && supporterData.menuItems.length > 0 && (
-        <div className="mt-6">
-          <h2 className="text-xl font-semibold mb-2">
-            {isChinese ? "菜单" : "Menu Items"}
-          </h2>
-          <button className="mb-2 px-3 py-1 bg-gray-300 rounded hover:bg-gray-400">
-            {isChinese ? "调整菜单顺序" : "Reorder Menu"}
-          </button>
-          <ul className="list-disc pl-6">
-            {supporterData.menuItems.map((item) => (
-              <li key={item.id}>
-                {item.name} - ${item.price}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Recommended Dishes */}
-      {supporterData.recommendedDishes &&
-        supporterData.recommendedDishes.length > 0 && (
-          <div className="mt-6">
-            <h2 className="text-xl font-semibold mb-2">
-              {isChinese ? "推荐菜" : "Recommended Dishes"}
-            </h2>
-            <button className="mb-2 px-3 py-1 bg-gray-300 rounded hover:bg-gray-400">
-              {isChinese ? "调整推荐菜顺序" : "Reorder Recommended Dishes"}
-            </button>
-            <ul className="list-disc pl-6">
-              {supporterData.recommendedDishes.map((dish) => (
-                <li key={dish.id}>{dish.name}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-      {/* Store Photos */}
-      {supporterData.storePhotos && supporterData.storePhotos.length > 0 && (
-        <div className="mt-6">
-          <h2 className="text-xl font-semibold mb-2">
-            {isChinese ? "店铺照片" : "Store Photos"}
-          </h2>
-          <button className="mb-2 px-3 py-1 bg-gray-300 rounded hover:bg-gray-400">
-            {isChinese ? "调整照片顺序" : "Reorder Store Photos"}
-          </button>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-            {supporterData.storePhotos.map((url, index) => (
-              <img
-                key={index}
-                src={url}
-                alt={`Store photo ${index + 1}`}
-                className="w-full h-32 object-cover rounded"
-              />
-            ))}
-          </div>
-        </div>
-      )}
+      <div className="mt-6">
+        <Link href="/account" className="text-blue-600 underline">
+          {isChinese ? '返回账户' : 'Back to Account'}
+        </Link>
+      </div>
     </div>
   );
 }
