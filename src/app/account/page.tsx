@@ -32,20 +32,21 @@ export default function AccountPage() {
   const [loginMethod, setLoginMethod] = useState<"google" | "phone">("google");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [otp, setOtp] = useState("");
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [confirmationResult, setConfirmationResult] =
+    useState<ConfirmationResult | null>(null);
   const [error, setError] = useState("");
 
   // Helper function to format US phone numbers to E.164 format
   const formatUSPhoneNumber = (number: string): string | null => {
-    const cleaned = number.replace(/\D/g, ''); // Remove all non-digit characters
+    const cleaned = number.replace(/\D/g, ""); // Remove all non-digit chars
     if (cleaned.length === 10) {
-      return `+1${cleaned}`; // Prepend +1 for 10-digit numbers
-    } else if (cleaned.length === 11 && cleaned.startsWith('1')) {
-      return `+${cleaned}`; // Prepend + for 11-digit numbers starting with 1
+      return `+1${cleaned}`; // 10-digit → +1 prefix
+    } else if (cleaned.length === 11 && cleaned.startsWith("1")) {
+      return `+${cleaned}`; // 11-digit w/leading 1 → keep as is
     }
-    return null; // Return null if format is invalid
+    return null;
   };
-  
+
   const handleGoogleLogin = async () => {
     const provider = new GoogleAuthProvider();
     await signInWithPopup(auth, provider).catch((err) => setError(err.message));
@@ -59,14 +60,14 @@ export default function AccountPage() {
   const setupRecaptcha = () => {
     if (typeof window !== "undefined" && !window.recaptchaVerifier) {
       window.recaptchaVerifier = new RecaptchaVerifier(
-        "recaptcha-container", // 1. The container ID
-        {                      // 2. The parameters
+        "recaptcha-container",
+        {
           size: "invisible",
           callback: () => {
             console.log("reCAPTCHA solved");
           },
         },
-        auth                   // 3. The auth object
+        auth
       );
     }
   };
@@ -84,7 +85,11 @@ export default function AccountPage() {
     try {
       setupRecaptcha();
       const appVerifier = window.recaptchaVerifier;
-      const result = await signInWithPhoneNumber(auth, formattedPhoneNumber, appVerifier);
+      const result = await signInWithPhoneNumber(
+        auth,
+        formattedPhoneNumber,
+        appVerifier
+      );
       setConfirmationResult(result);
     } catch (err: any) {
       setError(`Error sending OTP: ${err.message}`);
@@ -103,8 +108,8 @@ export default function AccountPage() {
       setError(`Error verifying OTP: ${err.message}`);
     }
   };
-  
-  // Listen for auth state changes and manage user document
+
+  // --- Auth State & Firestore user creation ---
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
@@ -115,10 +120,11 @@ export default function AccountPage() {
         if (userSnap.exists()) {
           setRole(userSnap.data().role);
         } else {
-          // Create a new user profile, handling both Google and Phone providers
+          // Create a new user profile.
+          // Note: "name" field is treated as 商店名字 (Store Name).
           const newUserProfile = {
             email: firebaseUser.email || null,
-            name: firebaseUser.displayName || "",
+            name: "", // 商店名字 left blank initially
             displayName: firebaseUser.displayName || "",
             photoURL: firebaseUser.photoURL || "",
             phone: firebaseUser.phoneNumber || "",
@@ -156,7 +162,7 @@ export default function AccountPage() {
       <div className="p-6 text-center max-w-sm mx-auto">
         <h1 className="text-2xl font-bold mb-4">Welcome</h1>
         <p className="mb-6">Please sign in to manage your account.</p>
-        
+
         <div id="recaptcha-container"></div>
 
         {loginMethod === "google" ? (
@@ -179,7 +185,10 @@ export default function AccountPage() {
             {!confirmationResult ? (
               <form onSubmit={handleSendOtp} className="space-y-4">
                 <div>
-                  <label htmlFor="phone-input" className="block text-sm font-medium text-gray-700 text-left mb-1">
+                  <label
+                    htmlFor="phone-input"
+                    className="block text-sm font-medium text-gray-700 text-left mb-1"
+                  >
                     Phone Number (US only)
                   </label>
                   <input
@@ -192,7 +201,10 @@ export default function AccountPage() {
                     required
                   />
                 </div>
-                <button type="submit" className="w-full bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
+                <button
+                  type="submit"
+                  className="w-full bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
+                >
                   Send Code
                 </button>
               </form>
@@ -206,12 +218,15 @@ export default function AccountPage() {
                   className="w-full p-2 border rounded text-black"
                   required
                 />
-                <button type="submit" className="w-full bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
+                <button
+                  type="submit"
+                  className="w-full bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
+                >
                   Verify & Sign In
                 </button>
               </form>
             )}
-             <button
+            <button
               onClick={() => {
                 setLoginMethod("google");
                 setError("");
@@ -242,32 +257,46 @@ export default function AccountPage() {
           />
         ) : (
           <div className="w-16 h-16 rounded-full mr-4 bg-gray-200 flex items-center justify-center text-gray-500 text-2xl font-bold">
-            {user.displayName?.charAt(0) || user.phoneNumber?.slice(-4,-2) || '?'}
+            {user.displayName?.charAt(0) ||
+              user.phoneNumber?.slice(-4, -2) ||
+              "?"}
           </div>
         )}
         <div>
-          <p className="font-semibold">{user.displayName || 'New User'}</p>
+          <p className="font-semibold">{user.displayName || "New User"}</p>
           <p className="text-gray-600">{user.email || user.phoneNumber}</p>
           <p className="text-sm capitalize text-gray-500 mt-1">Role: {role}</p>
         </div>
       </div>
-      
+
       <div className="space-y-3 mb-6">
-        <Link href="/profile" className="block w-full text-center bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+        <Link
+          href="/profile"
+          className="block w-full text-center bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
           Edit My Profile
         </Link>
         {role === "admin" && (
-          <Link href="/admin" className="block w-full text-center bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+          <Link
+            href="/admin"
+            className="block w-full text-center bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+          >
             Go to Admin Panel
           </Link>
         )}
         {role === "supporter" && (
-          <Link href={`/supporter-dashboard`} className="block w-full text-center bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">
+          <Link
+            href={`/supporter-dashboard`}
+            className="block w-full text-center bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
+          >
             Manage My Supporter Profile
           </Link>
         )}
         {role === "contributor" && (
-          <Link href="/contributor" className="block w-full text-center bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
+          <Link
+            href="/contributor"
+            className="block w-full text-center bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+          >
             Go to Contributor Tools
           </Link>
         )}
