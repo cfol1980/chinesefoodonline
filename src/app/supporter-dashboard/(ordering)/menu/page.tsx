@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from "react";
-import { auth, db } from "@/lib/firebase"; // Your client-side Firebase config
+import { auth, db } from "@/lib/firebase"; // Your client-side Firebase config v
 import { onAuthStateChanged, User } from "firebase/auth";
 import {
   collection,
@@ -47,7 +47,7 @@ const translations = {
   },
   zh: {
     title: "菜单管理",
-    loading: "菜单加载中...",
+    loading: "菜单加载中....",
     noItems: "未找到菜单项。点击“添加新菜单项”开始！",
     addNewItem: "+ 添加新菜单项",
     editItem: "编辑菜单项",
