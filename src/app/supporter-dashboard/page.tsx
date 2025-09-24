@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useEffect, useState } from "react";
 import { auth, db, storage } from "@/lib/firebase";
@@ -47,19 +47,6 @@ const translations = {
     reorderRecs: "Reorder Recommended Dishes",
     storePhotos: "Store Photos",
     reorderPhotos: "Reorder Store Photos",
-    edit: "Edit",
-    delete: "Delete",
-    loading: "Loading...",
-    pleaseLogin: "Please log in to continue.",
-    noAccess: "You do not have access to this page.",
-    noSupporterRecord: "No supporter record associated with this account.",
-    menuDeleted: "Menu item deleted!",
-    recommendationDeleted: "Recommendation deleted!",
-    storeImageDeleted: "Store image deleted!",
-    promotionDeletedSuccess: "Promotion deleted successfully!",
-    deleteFailed: "Delete failed.",
-    confirmDeletePromotion: "Are you sure you want to delete this promotion?",
-    backToAccount: "Back to Account",
   },
   zh: {
     dashboard: "商家后台",
@@ -93,19 +80,6 @@ const translations = {
     reorderRecs: "调整推荐菜顺序",
     storePhotos: "店铺照片",
     reorderPhotos: "调整照片顺序",
-    edit: "编辑",
-    delete: "删除",
-    loading: "加载中...",
-    pleaseLogin: "请先登录继续。",
-    noAccess: "您没有权限访问此页面。",
-    noSupporterRecord: "没有与此账户关联的商户记录。",
-    menuDeleted: "菜单项已删除！",
-    recommendationDeleted: "推荐已删除！",
-    storeImageDeleted: "店铺图片已删除！",
-    promotionDeletedSuccess: "促销已成功删除！",
-    deleteFailed: "删除失败。",
-    confirmDeletePromotion: "确定要删除此促销活动吗？",
-    backToAccount: "返回账户",
   },
 };
 
@@ -132,10 +106,10 @@ interface PromotionData {
   promoteStatus: boolean;
   promoteName: string;
   promoteCode: string;
-  promotePictureURL?: string;
-  promoteCreateDate?: string;
-  promoteExpireDate?: string;
-  promoteDiscountRate?: number;
+  promotePictureURL: string;
+  promoteCreateDate: string;
+  promoteExpireDate: string;
+  promoteDiscountRate: number;
 }
 
 interface SupporterData {
@@ -152,82 +126,72 @@ interface SupporterData {
   storeImages?: ImgItem[];
   isOrderingEnabled?: boolean;
   promotion?: PromotionData;
-  [key: string]: any;
 }
 
 export default function SupporterDashboard() {
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState<string | null>(null);
-  const [slug, setSlug] = useState<string | null>(null);
-  const [supporterData, setSupporterData] = useState<SupporterData | null>(null);
+  const [slugs, setSlugs] = useState<string[]>([]);
+  const [supporterData, setSupporterData] = useState<SupporterData[]>([]);
   const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState<"en" | "zh">("en");
 
+  // Helper for translations
   const t = (key: keyof typeof translations["en"]) => translations[lang][key];
 
+  // Detect browser language once on load
   useEffect(() => {
-    // Optional: initialize lang based on browser (keeps toggle)
-    if (typeof navigator !== "undefined") {
-      const nav = navigator.language || navigator.languages?.[0] || "en";
-      if (nav.toLowerCase().startsWith("zh")) {
-        setLang("zh");
-      }
+    const browserLang = navigator.language.toLowerCase();
+    if (browserLang.startsWith("zh")) {
+      setLang("zh");
+    } else {
+      setLang("en");
     }
+  }, []);
 
+  // Fetch user + supporter data
+  useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (!firebaseUser) {
         setUser(null);
         setRole(null);
-        setSlug(null);
-        setSupporterData(null);
+        setSlugs([]);
+        setSupporterData([]);
         setLoading(false);
         return;
       }
 
       setUser(firebaseUser);
 
-      // Load user document
       const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
       if (userDoc.exists()) {
-        const data = userDoc.data() as any;
-        setRole(data.role ?? null);
+        const data = userDoc.data();
+        setRole(data.role);
 
-        // Handle both string and array for ownedSupporterId
         if (data.role === "supporter" && data.ownedSupporterId) {
-          const supporterIds: string[] = Array.isArray(data.ownedSupporterId)
+          // Normalize to array
+          const ids = Array.isArray(data.ownedSupporterId)
             ? data.ownedSupporterId
             : [data.ownedSupporterId];
+          setSlugs(ids);
 
-          if (supporterIds.length > 0) {
-            const supporterId = supporterIds[0]; // for now, use the first
-            setSlug(supporterId);
-
-            const supporterDoc = await getDoc(doc(db, "supporters", supporterId));
+          const supporters: SupporterData[] = [];
+          for (const id of ids) {
+            const supporterDoc = await getDoc(doc(db, "supporters", id));
             if (supporterDoc.exists()) {
-              setSupporterData(supporterDoc.data() as SupporterData);
-            } else {
-              console.warn("Supporter doc not found:", supporterId);
-              setSupporterData(null);
+              supporters.push(supporterDoc.data() as SupporterData);
             }
-          } else {
-            setSupporterData(null);
           }
-        } else {
-          // Not a supporter or no id
-          setSupporterData(null);
+          setSupporterData(supporters);
         }
-      } else {
-        console.error("User document not found!");
-        setSupporterData(null);
       }
       setLoading(false);
     });
     return () => unsub();
   }, []);
 
-  // Delete handlers (use slug)
-  const handleDeleteMenu = async (itemToDelete: MenuItem) => {
-    if (!slug) return;
+  // -------- Handlers --------
+  const handleDeleteMenu = async (slug: string, itemToDelete: MenuItem) => {
     try {
       if (itemToDelete.path) {
         await deleteObject(storageRef(storage, itemToDelete.path));
@@ -235,16 +199,15 @@ export default function SupporterDashboard() {
       await updateDoc(doc(db, "supporters", slug), {
         menu: arrayRemove(itemToDelete),
       });
-      alert(t("menuDeleted"));
+      alert("Menu item deleted!");
       window.location.reload();
     } catch (err) {
       console.error(err);
-      alert(t("deleteFailed"));
+      alert("Delete failed.");
     }
   };
 
-  const handleDeleteRecommendation = async (recToDelete: RecItem) => {
-    if (!slug) return;
+  const handleDeleteRecommendation = async (slug: string, recToDelete: RecItem) => {
     try {
       if (recToDelete.path) {
         await deleteObject(storageRef(storage, recToDelete.path));
@@ -252,16 +215,15 @@ export default function SupporterDashboard() {
       await updateDoc(doc(db, "supporters", slug), {
         recommendations: arrayRemove(recToDelete),
       });
-      alert(t("recommendationDeleted"));
+      alert("Recommendation deleted!");
       window.location.reload();
     } catch (err) {
       console.error(err);
-      alert(t("deleteFailed"));
+      alert("Delete failed.");
     }
   };
 
-  const handleDeleteStoreImage = async (imgToDelete: ImgItem) => {
-    if (!slug) return;
+  const handleDeleteStoreImage = async (slug: string, imgToDelete: ImgItem) => {
     try {
       if (imgToDelete.path) {
         await deleteObject(storageRef(storage, imgToDelete.path));
@@ -269,290 +231,332 @@ export default function SupporterDashboard() {
       await updateDoc(doc(db, "supporters", slug), {
         storeImages: arrayRemove(imgToDelete),
       });
-      alert(t("storeImageDeleted"));
+      alert("Store image deleted!");
       window.location.reload();
     } catch (err) {
       console.error(err);
-      alert(t("deleteFailed"));
+      alert("Delete failed.");
     }
   };
 
-  const handleDeletePromotion = async () => {
-    if (!slug || !supporterData?.promotion) return;
+  const handleDeletePromotion = async (slug: string, promotion: PromotionData) => {
+    if (!promotion) return;
 
-    if (!window.confirm(t("confirmDeletePromotion"))) return;
-
-    try {
-      if (supporterData.promotion.promotePictureURL) {
-        // If promotePictureURL is a full URL, we try to extract filename
-        const filename = supporterData.promotion.promotePictureURL.split("/").pop();
-        if (filename) {
-          const imageRef = storageRef(storage, `promotion/${slug}/${filename}`);
-          await deleteObject(imageRef).catch((err) => {
-            // ignore errors deleting image if it doesn't exist in storage
-            console.warn("Could not delete promotion image:", err);
-          });
+    if (window.confirm("Are you sure you want to delete this promotion?")) {
+      try {
+        if (promotion.promotePictureURL) {
+          const imageRef = storageRef(
+            storage,
+            `promotion/${slug}/${promotion.promotePictureURL.split("/").pop()}`
+          );
+          await deleteObject(imageRef);
         }
+        await updateDoc(doc(db, "supporters", slug), {
+          promotion: deleteField(),
+        });
+        alert("Promotion deleted successfully!");
+        window.location.reload();
+      } catch (err) {
+        console.error("Error deleting promotion:", err);
+        alert("Failed to delete promotion.");
       }
-      await updateDoc(doc(db, "supporters", slug), {
-        promotion: deleteField(),
-      });
-      alert(t("promotionDeletedSuccess"));
-      // update local state
-      setSupporterData((prev) => (prev ? { ...prev, promotion: undefined } : null));
-    } catch (err) {
-      console.error("Error deleting promotion:", err);
-      alert(t("deleteFailed"));
     }
   };
 
-  if (loading) return <div className="p-4">{t("loading")}</div>;
-  if (!user) return <div className="p-4">{t("pleaseLogin")}</div>;
+  // -------- Render --------
+  if (loading) return <div className="p-4">Loading...</div>;
+  if (!user) return <div className="p-4">Please log in to continue.</div>;
   if (role !== "supporter") {
-    return <div className="p-4 text-red-600">{t("noAccess")}</div>;
+    return (
+      <div className="p-4 text-red-600">
+        You do not have access to this page.
+      </div>
+    );
   }
 
   return (
     <div className="p-6">
-      {/* Language Toggle */}
-      <div className="flex justify-end mb-4">
-        <button
-          onClick={() => setLang(lang === "en" ? "zh" : "en")}
-          className="px-3 py-1 border rounded"
-        >
-          {lang === "en" ? "中文" : "English"}
-        </button>
-      </div>
-
       <h1 className="text-2xl font-bold mb-4">{t("dashboard")}</h1>
 
-      {supporterData ? (
-        <div className="bg-white p-4 rounded shadow space-y-4">
-          <div>
-            <p>
-              <strong>{t("name")}:</strong> {supporterData.name}
-            </p>
-            <p>
-              <strong>{t("description")}:</strong> {supporterData.description}
-            </p>
-            <p>
-              <strong>{t("phone")}:</strong> {supporterData.phone}
-            </p>
-            <p>
-              <strong>{t("address")}:</strong> {supporterData.address}
-            </p>
-            <p>
-              <strong>{t("city")}:</strong> {supporterData.city}
-            </p>
-            <p>
-              <strong>{t("state")}:</strong> {supporterData.state}
-            </p>
-            <p>
-              <strong>{t("zip")}:</strong> {supporterData.zipCode}
-            </p>
-            <p>
-              <strong>{t("businessHours")}:</strong>{" "}
-              {supporterData.businessHours}
-            </p>
-            <p>
-              <strong>{t("orderingStatus")}:</strong>
-              <span
-                className={
-                  supporterData.isOrderingEnabled
-                    ? "text-green-600 font-bold ml-2"
-                    : "text-red-600 font-bold ml-2"
-                }
-              >
-                {supporterData.isOrderingEnabled ? t("enabled") : t("disabled")}
-              </span>
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href={`/supporter-dashboard/edit`}
-              className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+      {supporterData.length > 0 ? (
+        supporterData.map((supporter, index) => {
+          const slug = slugs[index];
+          return (
+            <div
+              key={slug}
+              className="bg-white p-4 rounded shadow space-y-4 mb-8"
             >
-              {t("editBusiness")}
-            </Link>
-
-            <Link
-              href={`/supporter-dashboard/orders`}
-              className="inline-block bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600"
-            >
-              {t("manageOrders")}
-            </Link>
-
-            <Link
-              href={`/supporter-dashboard/add-menu`}
-              className="inline-block bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-            >
-              {t("addMenu")}
-            </Link>
-
-            <Link
-              href={`/supporter-dashboard/add-recommendation`}
-              className="inline-block bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
-            >
-              {t("addRec")}
-            </Link>
-
-            <Link
-              href={`/supporter-dashboard/add-store-photo`}
-              className="inline-block bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
-            >
-              {t("addStorePhoto")}
-            </Link>
-
-            {!supporterData.promotion && (
-              <Link
-                href={`/supporter-dashboard/add-promotion`}
-                className="inline-block bg-pink-600 text-white px-4 py-2 rounded hover:bg-pink-700"
-              >
-                {t("addPromotion")}
-              </Link>
-            )}
-          </div>
-
-          {supporterData.promotion && (
-            <div className="mt-6">
-              <h2 className="text-xl font-semibold mb-2">{t("currentPromotion")}</h2>
-              <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 shadow-sm space-y-2">
+              {/* Basic Info */}
+              <div>
                 <p>
-                  <strong>{t("promotionName")}:</strong> {supporterData.promotion.promoteName}
+                  <strong>{t("name")}:</strong> {supporter.name}
                 </p>
                 <p>
-                  <strong>{t("promotionCode")}:</strong> {supporterData.promotion.promoteCode}
+                  <strong>{t("description")}:</strong> {supporter.description}
                 </p>
                 <p>
-                  <strong>{t("promotionStatus")}:</strong>
-                  <span className={`ml-1 font-bold ${supporterData.promotion.promoteStatus ? "text-green-600" : "text-red-600"}`}>
-                    {supporterData.promotion.promoteStatus ? t("enabled") : t("disabled")}
+                  <strong>{t("phone")}:</strong> {supporter.phone}
+                </p>
+                <p>
+                  <strong>{t("address")}:</strong> {supporter.address}
+                </p>
+                <p>
+                  <strong>{t("city")}:</strong> {supporter.city}
+                </p>
+                <p>
+                  <strong>{t("state")}:</strong> {supporter.state}
+                </p>
+                <p>
+                  <strong>{t("zip")}:</strong> {supporter.zipCode}
+                </p>
+                <p>
+                  <strong>{t("businessHours")}:</strong>{" "}
+                  {supporter.businessHours}
+                </p>
+                <p>
+                  <strong>{t("orderingStatus")}:</strong>
+                  <span
+                    className={
+                      supporter.isOrderingEnabled
+                        ? "text-green-600 font-bold ml-2"
+                        : "text-red-600 font-bold ml-2"
+                    }
+                  >
+                    {supporter.isOrderingEnabled ? t("enabled") : t("disabled")}
                   </span>
                 </p>
-                <p>
-                  <strong>{t("promotionDates")}:</strong>{" "}
-                  {supporterData.promotion.promoteCreateDate ? new Date(supporterData.promotion.promoteCreateDate).toLocaleDateString() : ""} -{" "}
-                  {supporterData.promotion.promoteExpireDate ? new Date(supporterData.promotion.promoteExpireDate).toLocaleDateString() : ""}
-                </p>
-                {supporterData.promotion.promotePictureURL && (
-                  <img
-                    src={supporterData.promotion.promotePictureURL}
-                    alt="Promotion"
-                    className="w-32 h-32 object-cover rounded-md"
-                  />
-                )}
-                <div className="flex gap-2 mt-4">
-                  <Link
-                    href={`/supporter-dashboard/add-promotion`}
-                    className="inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                  >
-                    {t("editPromotion")}
-                  </Link>
-                  <button
-                    onClick={handleDeletePromotion}
-                    className="inline-block bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-                  >
-                    {t("deletePromotion")}
-                  </button>
-                </div>
               </div>
-            </div>
-          )}
 
-          {/* Menu items */}
-          {supporterData.menu && supporterData.menu.length > 0 && (
-            <div className="mt-6">
-              <h2 className="text-xl font-semibold mb-2">{t("menuItems")}</h2>
-              <Link
-                href={`/supporter-dashboard/reorder-menu`}
-                className="inline-block bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 mb-4"
-              >
-                {t("reorderMenu")}
-              </Link>
-              {supporterData.menu.map((item, index) => (
-                <div key={index} className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded">
-                  <span>{item.name}</span>
-                  <div className="flex gap-2">
-                    <Link
-                      href={`/supporter-dashboard/edit-menu-item/${encodeURIComponent(item.name)}`}
-                      className="text-blue-600 hover:text-blue-700"
-                    >
-                      {t("edit")}
-                    </Link>
-                    <button onClick={() => handleDeleteMenu(item)} className="text-red-600 hover:text-red-700">
-                      {t("delete")}
-                    </button>
+              {/* Action buttons */}
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href={`/supporter-dashboard/edit/${slug}`}
+                  className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                >
+                  {t("editBusiness")}
+                </Link>
+                <Link
+                  href={`/supporter-dashboard/orders/${slug}`}
+                  className="inline-block bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600"
+                >
+                  {t("manageOrders")}
+                </Link>
+                <Link
+                  href={`/supporter-dashboard/add-menu/${slug}`}
+                  className="inline-block bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                >
+                  {t("addMenu")}
+                </Link>
+                <Link
+                  href={`/supporter-dashboard/add-recommendation/${slug}`}
+                  className="inline-block bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+                >
+                  {t("addRec")}
+                </Link>
+                <Link
+                  href={`/supporter-dashboard/add-store-photo/${slug}`}
+                  className="inline-block bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
+                >
+                  {t("addStorePhoto")}
+                </Link>
+                {!supporter.promotion && (
+                  <Link
+                    href={`/supporter-dashboard/add-promotion/${slug}`}
+                    className="inline-block bg-pink-600 text-white px-4 py-2 rounded hover:bg-pink-700"
+                  >
+                    {t("addPromotion")}
+                  </Link>
+                )}
+              </div>
+
+              {/* Promotion */}
+              {supporter.promotion && (
+                <div className="mt-6">
+                  <h2 className="text-xl font-semibold mb-2">
+                    {t("currentPromotion")}
+                  </h2>
+                  <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 shadow-sm space-y-2">
+                    <p>
+                      <strong>{t("promotionName")}:</strong>{" "}
+                      {supporter.promotion.promoteName}
+                    </p>
+                    <p>
+                      <strong>{t("promotionCode")}:</strong>{" "}
+                      {supporter.promotion.promoteCode}
+                    </p>
+                    <p>
+                      <strong>{t("promotionStatus")}:</strong>
+                      <span
+                        className={`ml-1 font-bold ${
+                          supporter.promotion.promoteStatus
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {supporter.promotion.promoteStatus
+                          ? t("enabled")
+                          : t("disabled")}
+                      </span>
+                    </p>
+                    <p>
+                      <strong>{t("promotionDates")}:</strong>{" "}
+                      {new Date(
+                        supporter.promotion.promoteCreateDate
+                      ).toLocaleDateString()}{" "}
+                      -{" "}
+                      {new Date(
+                        supporter.promotion.promoteExpireDate
+                      ).toLocaleDateString()}
+                    </p>
+                    {supporter.promotion.promotePictureURL && (
+                      <img
+                        src={supporter.promotion.promotePictureURL}
+                        alt="Promotion"
+                        className="w-32 h-32 object-cover rounded-md"
+                      />
+                    )}
+                    <div className="flex gap-2 mt-4">
+                      <Link
+                        href={`/supporter-dashboard/add-promotion/${slug}`}
+                        className="inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                      >
+                        {t("editPromotion")}
+                      </Link>
+                      <button
+                        onClick={() =>
+                          handleDeletePromotion(slug, supporter.promotion!)
+                        }
+                        className="inline-block bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+                      >
+                        {t("deletePromotion")}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+              )}
 
-          {/* Recommendations */}
-          {supporterData.recommendations && supporterData.recommendations.length > 0 && (
-            <div className="mt-6">
-              <h2 className="text-xl font-semibold mb-2">{t("recDishes")}</h2>
-              <Link
-                href={`/supporter-dashboard/reorder-recommendations`}
-                className="inline-block bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 mb-4"
-              >
-                {t("reorderRecs")}
-              </Link>
-              {supporterData.recommendations.map((rec, index) => (
-                <div key={index} className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded">
-                  <span>{rec.name}</span>
-                  <div className="flex gap-2">
-                    <Link
-                      href={`/supporter-dashboard/edit-recommendation/${encodeURIComponent(rec.name)}`}
-                      className="text-blue-600 hover:text-blue-700"
+              {/* Menu */}
+              {supporter.menu && supporter.menu.length > 0 && (
+                <div className="mt-6">
+                  <h2 className="text-xl font-semibold mb-2">
+                    {t("menuItems")}
+                  </h2>
+                  <Link
+                    href={`/supporter-dashboard/reorder-menu/${slug}`}
+                    className="inline-block bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 mb-4"
+                  >
+                    {t("reorderMenu")}
+                  </Link>
+                  {supporter.menu.map((item, i) => (
+                    <div
+                      key={i}
+                      className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded"
                     >
-                      {t("edit")}
-                    </Link>
-                    <button onClick={() => handleDeleteRecommendation(rec)} className="text-red-600 hover:text-red-700">
-                      {t("delete")}
-                    </button>
-                  </div>
+                      <span>{item.name}</span>
+                      <div className="flex gap-2">
+                        <Link
+                          href={`/supporter-dashboard/edit-menu-item/${slug}/${encodeURIComponent(
+                            item.name
+                          )}`}
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          Edit
+                        </Link>
+                        <button
+                          onClick={() => handleDeleteMenu(slug, item)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
+              )}
 
-          {/* Store Images */}
-          {supporterData.storeImages && supporterData.storeImages.length > 0 && (
-            <div className="mt-6">
-              <h2 className="text-xl font-semibold mb-2">{t("storePhotos")}</h2>
-              <Link
-                href={`/supporter-dashboard/reorder-store-photos`}
-                className="inline-block bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 mb-4"
-              >
-                {t("reorderPhotos")}
-              </Link>
-              {supporterData.storeImages.map((img: any, index) => (
-                <div key={index} className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded">
-                  <div className="flex items-center gap-2">
-                    {img.url && <img src={img.url} alt={img.name} className="h-12 w-12 object-cover rounded" />}
-                    <span>{img.name}</span>
-                  </div>
-                  <div className="flex gap-2">
+              {/* Recommendations */}
+              {supporter.recommendations &&
+                supporter.recommendations.length > 0 && (
+                  <div className="mt-6">
+                    <h2 className="text-xl font-semibold mb-2">
+                      {t("recDishes")}
+                    </h2>
                     <Link
-                      href={`/supporter-dashboard/edit-store-photo/${encodeURIComponent(img.name)}`}
-                      className="text-blue-600 hover:text-blue-700"
+                      href={`/supporter-dashboard/reorder-recommendations/${slug}`}
+                      className="inline-block bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 mb-4"
                     >
-                      {t("edit")}
+                      {t("reorderRecs")}
                     </Link>
-                    <button onClick={() => handleDeleteStoreImage(img)} className="text-red-600 hover:text-red-700">
-                      {t("delete")}
-                    </button>
+                    {supporter.recommendations.map((rec, i) => (
+                      <div
+                        key={i}
+                        className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded"
+                      >
+                        <span>{rec.name}</span>
+                        <div className="flex gap-2">
+                          <Link
+                            href={`/supporter-dashboard/edit-recommendation/${slug}/${encodeURIComponent(
+                              rec.name
+                            )}`}
+                            className="text-blue-600 hover:text-blue-700"
+                          >
+                            Edit
+                          </Link>
+                          <button
+                            onClick={() => handleDeleteRecommendation(slug, rec)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ) : (
-        <p>{t("noSupporterRecord")}</p>
-      )}
-    </div>
-  );
-}
+                )}
+
+              {/* Store Images */}
+              {supporter.storeImages && supporter.storeImages.length > 0 && (
+                <div className="mt-6">
+                  <h2 className="text-xl font-semibold mb-2">
+                    {t("storePhotos")}
+                  </h2>
+                  <Link
+                    href={`/supporter-dashboard/reorder-store-photos/${slug}`}
+                    className="inline-block bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 mb-4"
+                  >
+                    {t("reorderPhotos")}
+                  </Link>
+                  {supporter.storeImages.map((img, i) => (
+                    <div
+                      key={i}
+                      className="flex justify-between items-center bg-gray-100 p-2 mb-2 rounded"
+                    >
+                      <div className="flex items-center gap-2">
+                        {img.url && (
+                          <img
+                            src={img.url}
+                            alt={img.name}
+                            className="h-12 w-12 object-cover rounded"
+                          />
+                        )}
+                        <span>{img.name}</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Link
+                          href={`/supporter-dashboard/edit-store-photo/${slug}/${encodeURIComponent(
+                            img.name
+                          )}`}
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          Edit
+                        </Link>
+                        <button
+                          onClick={() => handleDeleteStoreImage(slug, img)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div
