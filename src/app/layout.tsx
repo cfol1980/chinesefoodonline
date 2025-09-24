@@ -1,32 +1,92 @@
-import "@/styles/globals.css"
-import Link from 'next/link';
-import { GoogleAnalytics } from '@next/third-parties/google';
-/*import ModalWrapper from './_components/ModalWrapper';*/
+"use client";
 
-export const metadata = {
-  title: 'ChineseFoodOnline',
-  description: 'A hub for Chinese food enthusiasts in the U.S.',
+import "@/styles/globals.css";
+import Link from "next/link";
+import { GoogleAnalytics } from "@next/third-parties/google";
+import { useEffect, useState } from "react";
+
+// ----- Translations -----
+const translations = {
+  en: {
+    home: "Home",
+    explore: "Explore",
+    community: "Community",
+    account: "Account",
+    footer: "© 2025 ChineseFoodOnline.com All rights reserved.",
+  },
+  zh: {
+    home: "首页",
+    explore: "探索",
+    community: "社区",
+    account: "账号",
+    footer: "© 2025 ChineseFoodOnline.com 版权所有",
+  },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export const metadata = {
+  title: "ChineseFoodOnline",
+  description: "A hub for Chinese food enthusiasts in the U.S.",
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [lang, setLang] = useState<"en" | "zh">("en");
+
+  useEffect(() => {
+    if (typeof navigator !== "undefined") {
+      const browserLang = navigator.language.toLowerCase();
+      if (browserLang.startsWith("zh")) {
+        setLang("zh");
+      } else {
+        setLang("en");
+      }
+    }
+  }, []);
+
+  const t = (key: keyof typeof translations["en"]) => translations[lang][key];
+
   return (
-    <html lang="en">
+    <html lang={lang}>
       <body>
+        {/* Navigation */}
         <nav className="bg-green-100 text-black p-4 shadow-md">
           <ul className="flex space-x-4 justify-center">
-            <li><Link href="/" className="hover:text-green-700">Home</Link></li>
-            <li><Link href="/explore" className="hover:text-green-700">Explore</Link></li>
-            <li><Link href="/community" className="hover:text-green-700">Community</Link></li>
-            
-        
-            <li><Link href="/account" className="hover:text-green-700">Account</Link></li>
+            <li>
+              <Link href="/" className="hover:text-green-700">
+                {t("home")}
+              </Link>
+            </li>
+            <li>
+              <Link href="/explore" className="hover:text-green-700">
+                {t("explore")}
+              </Link>
+            </li>
+            <li>
+              <Link href="/community" className="hover:text-green-700">
+                {t("community")}
+              </Link>
+            </li>
+            <li>
+              <Link href="/account" className="hover:text-green-700">
+                {t("account")}
+              </Link>
+            </li>
           </ul>
         </nav>
+
+        {/* Main content */}
         <main className="min-h-screen">{children}</main>
+
+        {/* Footer */}
         <footer className="bg-green-100 p-4 text-center text-gray-600">
-          <p>&copy; 2025 ChineseFoodOnline.com All rights reserved.</p>
+          <p>{t("footer")}</p>
         </footer>
-        <GoogleAnalytics gaId="G-J3TN6EKMY7" /> {/* Add this line */}
+
+        {/* Google Analytics */}
+        <GoogleAnalytics gaId="G-J3TN6EKMY7" />
       </body>
     </html>
   );
