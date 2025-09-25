@@ -87,12 +87,13 @@ export default function OrderingLayout({ children }: { children: React.ReactNode
       <div className="flex flex-col md:flex-row min-h-screen bg-gray-100">
         {/* Sidebar for desktop */}
         <aside className="hidden md:flex md:flex-col w-64 bg-white shadow-md">
-          <div className="p-4 border-b font-bold text-xl">{t("title")}</div>
-
-         {/* Debug: show current supporterId */}
+            {/* Debug: show current supporterId */}
       <div className="p-2 text-sm text-gray-500">
         Current Supporter ID: {supporterId ?? "Not loaded yet"}
       </div>
+          <div className="p-4 border-b font-bold text-xl"> Current Supporter ID: {supporterId ?? "Not loaded yet"} {t("title")}</div>
+
+       
 
           <nav className="flex-1 p-4 space-y-2">
             {navLinks.map(({ href, label }) => (
