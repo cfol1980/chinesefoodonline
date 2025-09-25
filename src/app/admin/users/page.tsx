@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { collection, getDocs, updateDoc, doc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, updateDoc, deleteDoc, doc } from "firebase/firestore";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -21,6 +21,7 @@ export default function ManageUsersPage() {
   const [users, setUsers] = useState<UserDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+
   const router = useRouter();
 
   useEffect(() => {
@@ -37,20 +38,15 @@ export default function ManageUsersPage() {
   useEffect(() => {
     async function fetchUsers() {
       const qs = await getDocs(collection(db, "users"));
-      const list = qs.docs.map((d) => {
-        const data = d.data();
-        let ownedSupporterId: string[] = [];
-        if (data.ownedSupporterId) {
-          ownedSupporterId = Array.isArray(data.ownedSupporterId)
-            ? data.ownedSupporterId
-            : [data.ownedSupporterId];
-        }
-        return {
-          id: d.id,
-          ...data,
-          ownedSupporterId,
-        } as UserDoc;
-      });
+      const list = qs.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+        ownedSupporterId: Array.isArray(d.data().ownedSupporterId)
+          ? d.data().ownedSupporterId
+          : d.data().ownedSupporterId
+          ? [d.data().ownedSupporterId]
+          : [],
+      })) as UserDoc[];
       setUsers(list);
       setLoading(false);
     }
@@ -61,12 +57,18 @@ export default function ManageUsersPage() {
   const handleRoleUpdate = async (id: string, newRole: string) => {
     await updateDoc(doc(db, "users", id), { role: newRole });
     alert("Role updated!");
+    setUsers((prev) =>
+      prev.map((u) => (u.id === id ? { ...u, role: newRole } : u))
+    );
   };
 
   const handleSlugUpdate = async (id: string, newSlug: string) => {
-    if (!newSlug) return;
-    await updateDoc(doc(db, "users", id), { ownedSupporterId: [newSlug] });
+    const slugArray = newSlug.split(",").map((s) => s.trim()).filter(Boolean);
+    await updateDoc(doc(db, "users", id), { ownedSupporterId: slugArray });
     alert("Slug assigned!");
+    setUsers((prev) =>
+      prev.map((u) => (u.id === id ? { ...u, ownedSupporterId: slugArray } : u))
+    );
   };
 
   const handleDeleteUser = async (id: string) => {
@@ -79,14 +81,18 @@ export default function ManageUsersPage() {
   if (!userIsAdmin) return null;
   if (loading) return <div className="p-6">Loading users...</div>;
 
-  // Filter users based on search
   const filteredUsers = users.filter((u) => {
     const searchLower = search.toLowerCase();
+    const name = u.name ?? "";
+    const email = u.email ?? "";
+    const phone = u.phone ?? "";
+    const supporterIds = u.ownedSupporterId ?? [];
+
     return (
-      u.name?.toLowerCase().includes(searchLower) ||
-      u.email.toLowerCase().includes(searchLower) ||
-      u.phone?.toLowerCase().includes(searchLower) ||
-      u.ownedSupporterId?.some((id) => id.toLowerCase().includes(searchLower))
+      name.toLowerCase().includes(searchLower) ||
+      email.toLowerCase().includes(searchLower) ||
+      phone.toLowerCase().includes(searchLower) ||
+      supporterIds.some((id) => id.toLowerCase().includes(searchLower))
     );
   });
 
@@ -94,15 +100,13 @@ export default function ManageUsersPage() {
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Manage Users</h1>
 
-      <div className="mb-4">
-        <input
-          type="text"
-          placeholder="Search by name, email, phone, supporter ID"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="border px-3 py-2 rounded w-full md:w-1/2"
-        />
-      </div>
+      <input
+        type="text"
+        placeholder="Search by name, email, phone, supporter ID..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="border p-2 rounded mb-4 w-full"
+      />
 
       <table className="min-w-full bg-white rounded shadow">
         <thead>
@@ -111,18 +115,12 @@ export default function ManageUsersPage() {
             <th className="py-2 px-4 text-left">Email</th>
             <th className="py-2 px-4 text-left">Phone</th>
             <th className="py-2 px-4 text-left">Role</th>
-            <th className="py-2 px-4 text-left">Owned Supporter</th>
-            <th className="py-2 px-4 text-left">Actions</th>
+            <th className="py-2 px-4 text-left">Owned Supporters</th>
+            <th className="py-2 px-4 text-left">Assign Slug</th>
+            <th className="py-2 px-4 text-left">Delete</th>
           </tr>
         </thead>
         <tbody>
-          {filteredUsers.length === 0 && (
-            <tr>
-              <td colSpan={6} className="text-center py-4 text-gray-500">
-                No users found.
-              </td>
-            </tr>
-          )}
           {filteredUsers.map((u) => (
             <tr key={u.id} className="border-t">
               <td className="py-2 px-4">{u.name || "-"}</td>
@@ -130,7 +128,7 @@ export default function ManageUsersPage() {
               <td className="py-2 px-4">{u.phone || "-"}</td>
               <td className="py-2 px-4">
                 <select
-                  defaultValue={u.role}
+                  value={u.role}
                   onChange={(e) => handleRoleUpdate(u.id, e.target.value)}
                   className="border px-2 py-1 rounded"
                 >
@@ -141,24 +139,27 @@ export default function ManageUsersPage() {
                 </select>
               </td>
               <td className="py-2 px-4">
-                {u.ownedSupporterId?.length ? u.ownedSupporterId.join(", ") : "-"}
+                {u.ownedSupporterId?.join(", ") || "-"}
               </td>
-              <td className="py-2 px-4 space-x-2">
+              <td className="py-2 px-4">
                 <form
-                  className="inline"
                   onSubmit={(e) => {
                     e.preventDefault();
                     const inputValue = (
-                      e.currentTarget.querySelector("input") as HTMLInputElement
+                      e.currentTarget.querySelector(
+                        'input'
+                      ) as HTMLInputElement
                     )?.value;
                     if (inputValue) handleSlugUpdate(u.id, inputValue);
                   }}
+                  className="flex gap-2"
                 >
                   <input
+                    name="slugInput"
                     type="text"
-                    defaultValue={u.ownedSupporterId?.[0] || ""}
-                    placeholder="Assign Slug"
-                    className="border px-2 py-1 rounded mr-1"
+                    placeholder="e.g. enoodle"
+                    defaultValue={u.ownedSupporterId?.join(", ")}
+                    className="border px-2 py-1 rounded flex-1"
                   />
                   <button
                     type="submit"
@@ -167,6 +168,8 @@ export default function ManageUsersPage() {
                     Save
                   </button>
                 </form>
+              </td>
+              <td className="py-2 px-4">
                 <button
                   onClick={() => handleDeleteUser(u.id)}
                   className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
