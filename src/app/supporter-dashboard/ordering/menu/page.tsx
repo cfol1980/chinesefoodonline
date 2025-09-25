@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useEffect, useState, useMemo } from "react";
 import { db } from "@/lib/firebase";
@@ -12,6 +12,7 @@ import {
   deleteDoc,
   Timestamp,
 } from "firebase/firestore";
+import { useSupporter } from "../SupporterContext";
 
 interface MenuItem {
   id: string;
@@ -38,7 +39,8 @@ const translations = {
     delete: "Delete",
     edit: "Edit",
     confirmDelete: "Are you sure you want to delete this item?",
-    errorFetching: "Could not load supporter data. Please ensure you are logged in correctly.",
+    errorFetching:
+      "Could not load supporter data. Please ensure you are logged in correctly.",
   },
   zh: {
     title: "菜单管理",
@@ -77,8 +79,8 @@ function MenuItemForm({ item, onSave, onClose, t }: MenuItemFormProps) {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
-    const isCheckbox = type === 'checkbox';
-    const isNumber = type === 'number';
+    const isCheckbox = type === "checkbox";
+    const isNumber = type === "number";
     const checked = isCheckbox ? (e.target as HTMLInputElement).checked : undefined;
     setFormData((prev) => ({
       ...prev,
@@ -94,139 +96,226 @@ function MenuItemForm({ item, onSave, onClose, t }: MenuItemFormProps) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
       <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-6">{item?.id ? t("editItem") : t("addNewItem")}</h2>
+        <h2 className="text-2xl font-bold mb-6">
+          {item?.id ? t("editItem") : t("addNewItem")}
+        </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div><label className="block font-semibold">{t("name")}</label><input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full p-2 border rounded-md" required /></div>
-          <div><label className="block font-semibold">{t("description")}</label><textarea name="description" value={formData.description} onChange={handleChange} className="w-full p-2 border rounded-md"></textarea></div>
-          <div className="flex gap-4">
-            <div className="flex-1"><label className="block font-semibold">{t("price")}</label><input type="number" name="price" value={formData.price} onChange={handleChange} step="0.01" className="w-full p-2 border rounded-md" required /></div>
-            <div className="flex-1"><label className="block font-semibold">{t("category")}</label><input type="text" name="category" value={formData.category} onChange={handleChange} className="w-full p-2 border rounded-md" placeholder="e.g., Appetizers" required /></div>
+          <div>
+            <label className="block font-semibold">{t("name")}</label>
+            <input
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              className="w-full p-2 border rounded-md"
+              required
+            />
           </div>
-          <div><label className="flex items-center gap-2"><input type="checkbox" name="isAvailable" checked={formData.isAvailable} onChange={handleChange} />{t("available")}</label></div>
-          <div className="flex justify-end gap-4 mt-6"><button type="button" onClick={onClose} className="bg-gray-300 py-2 px-4 rounded-lg hover:bg-gray-400">Cancel</button><button type="submit" className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700">{t("save")}</button></div>
+          <div>
+            <label className="block font-semibold">{t("description")}</label>
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              className="w-full p-2 border rounded-md"
+            ></textarea>
+          </div>
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <label className="block font-semibold">{t("price")}</label>
+              <input
+                type="number"
+                name="price"
+                value={formData.price}
+                onChange={handleChange}
+                step="0.01"
+                className="w-full p-2 border rounded-md"
+                required
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block font-semibold">{t("category")}</label>
+              <input
+                type="text"
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                className="w-full p-2 border rounded-md"
+                placeholder="e.g., Appetizers"
+                required
+              />
+            </div>
+          </div>
+          <div>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                name="isAvailable"
+                checked={formData.isAvailable}
+                onChange={handleChange}
+              />
+              {t("available")}
+            </label>
+          </div>
+          <div className="flex justify-end gap-4 mt-6">
+            <button
+              type="button"
+              onClick={onClose}
+              className="bg-gray-300 py-2 px-4 rounded-lg hover:bg-gray-400"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700"
+            >
+              {t("save")}
+            </button>
+          </div>
         </form>
       </div>
     </div>
   );
 }
 
-// --- Main Logic Component (Accepts props) ---
-function MenuEditor({ supporterId }: { supporterId: string | null }) {
-    const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [currentItem, setCurrentItem] = useState<Partial<MenuItem> | null>(null);
-    const [lang, setLang] = useState<"en" | "zh">("en");
+export default function MenuPage() {
+  const { supporterId } = useSupporter();
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentItem, setCurrentItem] = useState<Partial<MenuItem> | null>(null);
+  const [lang, setLang] = useState<"en" | "zh">("en");
 
-    useEffect(() => {
-        if (typeof navigator !== "undefined") {
-            const browserLang = navigator.language || navigator.languages?.[0] || "en";
-            if (browserLang.toLowerCase().startsWith("zh")) setLang("zh");
-        }
-    }, []);
-    const t = (key: keyof typeof translations["en"]) => translations[lang][key];
-
-    useEffect(() => {
-        if (!supporterId) {
-            if(document.readyState === "complete") setLoading(false);
-            return;
-        }
-
-        const menuCollectionRef = collection(db, "supporters", supporterId, "menu");
-        const q = query(menuCollectionRef);
-        const unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
-            const items = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as MenuItem));
-            setMenuItems(items);
-            setLoading(false);
-        });
-
-        return () => unsubscribeSnapshot();
-    }, [supporterId]);
-
-    const groupedMenu = useMemo(() => {
-        return menuItems.reduce((acc, item) => {
-            const category = item.category || "Uncategorized";
-            if (!acc[category]) acc[category] = [];
-            acc[category].push(item);
-            return acc;
-        }, {} as Record<string, MenuItem[]>);
-    }, [menuItems]);
-
-    const handleOpenModal = (item: Partial<MenuItem> | null = null) => {
-        setCurrentItem(item);
-        setIsModalOpen(true);
-    };
-    const handleCloseModal = () => {
-        setIsModalOpen(false);
-        setCurrentItem(null);
-    };
-    const handleSaveItem = async (itemData: Omit<MenuItem, "id">) => {
-        if (!supporterId) return;
-        const menuCollectionRef = collection(db, "supporters", supporterId, "menu");
-        if (currentItem?.id) {
-            await updateDoc(doc(menuCollectionRef, currentItem.id), itemData);
-        } else {
-            await addDoc(menuCollectionRef, { ...itemData, createdAt: Timestamp.now() });
-        }
-        handleCloseModal();
-    };
-    const handleDeleteItem = async (itemId: string) => {
-        if (!supporterId) return;
-        if (window.confirm(t("confirmDelete"))) {
-            await deleteDoc(doc(db, "supporters", supporterId, "menu", itemId));
-        }
-    };
-
-    if (loading) {
-        return <div className="text-center p-8">{t("loading")}</div>;
+  useEffect(() => {
+    if (typeof navigator !== "undefined") {
+      const browserLang = navigator.language || navigator.languages?.[0] || "en";
+      if (browserLang.toLowerCase().startsWith("zh")) setLang("zh");
     }
-    
+  }, []);
+
+  const t = (key: keyof typeof translations["en"]) => translations[lang][key];
+
+  useEffect(() => {
     if (!supporterId) {
-        return <div className="text-center text-red-500 p-8">{t("errorFetching")}</div>;
+      if (document.readyState === "complete") setLoading(false);
+      return;
     }
 
-    return (
-        <div>
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold">{t("title")}</h1>
-                <button onClick={() => handleOpenModal()} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
-                    {t("addNewItem")}
-                </button>
-            </div>
-            {menuItems.length === 0 ? (
-                <p className="text-center text-gray-500 p-8 bg-white rounded-lg shadow-md">{t("noItems")}</p>
-            ) : (
-                <div className="space-y-6">
-                    {Object.entries(groupedMenu).map(([category, items]) => (
-                        <div key={category}>
-                            <h2 className="text-xl font-semibold mb-3 border-b pb-2">{category}</h2>
-                            <div className="space-y-2">
-                                {items.map((item) => (
-                                    <div key={item.id} className="bg-white p-4 rounded-lg shadow-sm flex justify-between items-center">
-                                        <div>
-                                            <p className="font-bold">{item.name}</p>
-                                            <p className="text-sm text-gray-600">{item.description}</p>
-                                        </div>
-                                        <div className="flex items-center gap-4">
-                                            <span className="font-semibold">${item.price.toFixed(2)}</span>
-                                            <button onClick={() => handleOpenModal(item)} className="text-blue-600 hover:underline">{t("edit")}</button>
-                                            <button onClick={() => handleDeleteItem(item.id)} className="text-red-600 hover:underline">{t("delete")}</button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-            {isModalOpen && <MenuItemForm item={currentItem} onSave={handleSaveItem} onClose={handleCloseModal} t={t} />}
-        </div>
-    );
-}
+    const menuCollectionRef = collection(db, "supporters", supporterId, "menu");
+    const q = query(menuCollectionRef);
+    const unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+      const items = snapshot.docs.map(
+        (doc) => ({ id: doc.id, ...doc.data() } as MenuItem)
+      );
+      setMenuItems(items);
+      setLoading(false);
+    });
 
-// --- Default Page Export (This is the valid structure) ---
-export default function MenuPage({ supporterId }: { supporterId: string | null }) {
-  // This is the actual page component Next.js renders.
-  // Its only job is to render the MenuEditor and pass the prop down.
-  return <MenuEditor supporterId={supporterId} />;
+    return () => unsubscribeSnapshot();
+  }, [supporterId]);
+
+  const groupedMenu = useMemo(() => {
+    return menuItems.reduce((acc, item) => {
+      const category = item.category || "Uncategorized";
+      if (!acc[category]) acc[category] = [];
+      acc[category].push(item);
+      return acc;
+    }, {} as Record<string, MenuItem[]>);
+  }, [menuItems]);
+
+  const handleOpenModal = (item: Partial<MenuItem> | null = null) => {
+    setCurrentItem(item);
+    setIsModalOpen(true);
+  };
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setCurrentItem(null);
+  };
+  const handleSaveItem = async (itemData: Omit<MenuItem, "id">) => {
+    if (!supporterId) return;
+    const menuCollectionRef = collection(db, "supporters", supporterId, "menu");
+    if (currentItem?.id) {
+      await updateDoc(doc(menuCollectionRef, currentItem.id), itemData);
+    } else {
+      await addDoc(menuCollectionRef, { ...itemData, createdAt: Timestamp.now() });
+    }
+    handleCloseModal();
+  };
+  const handleDeleteItem = async (itemId: string) => {
+    if (!supporterId) return;
+    if (window.confirm(t("confirmDelete"))) {
+      await deleteDoc(doc(db, "supporters", supporterId, "menu", itemId));
+    }
+  };
+
+  if (loading) {
+    return <div className="text-center p-8">{t("loading")}</div>;
+  }
+
+  if (!supporterId) {
+    return <div className="text-center text-red-500 p-8">{t("errorFetching")}</div>;
+  }
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">{t("title")}</h1>
+        <button
+          onClick={() => handleOpenModal()}
+          className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          {t("addNewItem")}
+        </button>
+      </div>
+      {menuItems.length === 0 ? (
+        <p className="text-center text-gray-500 p-8 bg-white rounded-lg shadow-md">
+          {t("noItems")}
+        </p>
+      ) : (
+        <div className="space-y-6">
+          {Object.entries(groupedMenu).map(([category, items]) => (
+            <div key={category}>
+              <h2 className="text-xl font-semibold mb-3 border-b pb-2">{category}</h2>
+              <div className="space-y-2">
+                {items.map((item) => (
+                  <div
+                    key={item.id}
+                    className="bg-white p-4 rounded-lg shadow-sm flex justify-between items-center"
+                  >
+                    <div>
+                      <p className="font-bold">{item.name}</p>
+                      <p className="text-sm text-gray-600">{item.description}</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className="font-semibold">${item.price.toFixed(2)}</span>
+                      <button
+                        onClick={() => handleOpenModal(item)}
+                        className="text-blue-600 hover:underline"
+                      >
+                        {t("edit")}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteItem(item.id)}
+                        className="text-red-600 hover:underline"
+                      >
+                        {t("delete")}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {isModalOpen && (
+        <MenuItemForm
+          item={currentItem}
+          onSave={handleSaveItem}
+          onClose={handleCloseModal}
+          t={t}
+        />
+      )}
+    </div>
+  );
 }
