@@ -88,7 +88,7 @@ export default function OrderingLayout({ children }: { children: React.ReactNode
         {/* Sidebar for desktop */}
         <aside className="hidden md:flex md:flex-col w-64 bg-white shadow-md">
           <div className="p-4 border-b font-bold text-xl">{t("title")}</div>
-          
+
          {/* Debug: show current supporterId */}
       <div className="p-2 text-sm text-gray-500">
         Current Supporter ID: {supporterId ?? "Not loaded yet"}
@@ -145,7 +145,14 @@ export default function OrderingLayout({ children }: { children: React.ReactNode
         )}
 
         {/* Main content */}
-        <main className="flex-1 p-4 md:p-6">{children}</main>
+        <main className="flex-1 p-4 md:p-6">
+           {/* Debug: also log supporterId */}
+      {supporterId && (
+        <div className="mb-2 text-gray-500 text-sm">
+          ⚡ Using Supporter ID: {supporterId}
+        </div>
+      )}
+          {children}</main>
       </div>
     </SupporterProvider>
   );
