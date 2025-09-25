@@ -159,41 +159,45 @@ export default function OrderingDashboardPage() {
   const t = (key: keyof typeof translations["en"]) => translations[lang][key];
 
   // --- Data Fetching and Real-time Updates ---
-  useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        setUser(firebaseUser);
-        const userDocRef = doc(db, "users", firebaseUser.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists() && userDoc.data().ownedSupporterId?.[0]) {
-          const id = userDoc.data().ownedSupporterId[0];
-          setSupporterId(id);
-        } else {
+ // --- Corrected Data Fetching and Real-time Updates ---
+useEffect(() => {
+  const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+    if (firebaseUser) {
+      setUser(firebaseUser);
+      const userDocRef = doc(db, "users", firebaseUser.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (userDoc.exists() && userDoc.data().ownedSupporterId?.[0]) {
+        const id = userDoc.data().ownedSupporterId[0];
+        setSupporterId(id);
+
+        // --- Start listening for menu changes AFTER supporterId is confirmed ---
+        const menuCollectionRef = collection(db, "supporters", id, "menu");
+        const q = query(menuCollectionRef);
+        const unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+          const items = snapshot.docs.map(
+            (doc) => ({ id: doc.id, ...doc.data() } as MenuItem)
+          );
+          setMenuItems(items);
           setLoading(false);
-          console.error("Supporter ID not found for user.");
-        }
+        });
+
+        // Return the snapshot listener's cleanup function
+        return () => unsubscribeSnapshot();
+
       } else {
-        setUser(null);
-        setSupporterId(null);
+        console.error("Supporter ID not found for user.");
         setLoading(false);
       }
-    });
-    return () => unsubscribeAuth();
-  }, []);
-
-  useEffect(() => {
-    if (!supporterId) return;
-    const menuCollectionRef = collection(db, "supporters", supporterId, "menu");
-    const q = query(menuCollectionRef);
-    const unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
-      const items = snapshot.docs.map(
-        (doc) => ({ id: doc.id, ...doc.data() } as MenuItem)
-      );
-      setMenuItems(items);
+    } else {
+      setUser(null);
+      setSupporterId(null);
       setLoading(false);
-    });
-    return () => unsubscribeSnapshot();
-  }, [supporterId]);
+    }
+  });
+
+  return () => unsubscribeAuth();
+}, []); // Empty dependency array ensures this runs only once on mount
 
   // --- Group items by category for display ---
   const groupedMenu = useMemo(() => {
