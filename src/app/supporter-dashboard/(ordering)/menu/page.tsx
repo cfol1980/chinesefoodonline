@@ -231,6 +231,8 @@ export default function MenuPage() {
   );
 }
 
+// --- Form Component (can be in a separate file) ---
+
 // Define the types for the component's props
 type MenuItemFormProps = {
     item: Partial<MenuItem> | null;
@@ -239,64 +241,69 @@ type MenuItemFormProps = {
     t: (key: keyof typeof translations["en"]) => string;
   };
   
-// --- Form Component (can be in a separate file) ---
-function MenuItemForm({ item, onSave, onClose, t }) {
-  const [formData, setFormData] = useState({
-    name: item?.name || "",
-    description: item?.description || "",
-    price: item?.price || 0,
-    category: item?.category || "",
-    isAvailable: item?.isAvailable !== false, // Default to true
-  });
-
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : type === 'number' ? parseFloat(value) : value,
-    }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSave(formData);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-      <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-6">{item?.id ? t("editItem") : t("addNewItem")}</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block font-semibold">{t("name")}</label>
-            <input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full p-2 border rounded-md" required />
-          </div>
-          <div>
-            <label className="block font-semibold">{t("description")}</label>
-            <textarea name="description" value={formData.description} onChange={handleChange} className="w-full p-2 border rounded-md"></textarea>
-          </div>
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <label className="block font-semibold">{t("price")}</label>
-              <input type="number" name="price" value={formData.price} onChange={handleChange} step="0.01" className="w-full p-2 border rounded-md" required />
+  function MenuItemForm({ item, onSave, onClose, t }: MenuItemFormProps) {
+    const [formData, setFormData] = useState({
+      name: item?.name || "",
+      description: item?.description || "",
+      price: item?.price || 0,
+      category: item?.category || "",
+      isAvailable: item?.isAvailable !== false, // Default to true
+    });
+  
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const { name, value, type } = e.target;
+      const isCheckbox = type === 'checkbox';
+      const isNumber = type === 'number';
+  
+      // Assert target is HTMLInputElement for checkbox 'checked' property
+      const checked = isCheckbox ? (e.target as HTMLInputElement).checked : undefined;
+  
+      setFormData((prev) => ({
+        ...prev,
+        [name]: isCheckbox ? checked : isNumber ? parseFloat(value) : value,
+      }));
+    };
+  
+    const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      onSave(formData);
+    };
+  
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+        <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+          <h2 className="text-2xl font-bold mb-6">{item?.id ? t("editItem") : t("addNewItem")}</h2>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block font-semibold">{t("name")}</label>
+              <input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full p-2 border rounded-md" required />
             </div>
-            <div className="flex-1">
-              <label className="block font-semibold">{t("category")}</label>
-              <input type="text" name="category" value={formData.category} onChange={handleChange} className="w-full p-2 border rounded-md" placeholder="e.g., Appetizers" required />
+            <div>
+              <label className="block font-semibold">{t("description")}</label>
+              <textarea name="description" value={formData.description} onChange={handleChange} className="w-full p-2 border rounded-md"></textarea>
             </div>
-          </div>
-           <div>
-            <label className="flex items-center gap-2">
-              <input type="checkbox" name="isAvailable" checked={formData.isAvailable} onChange={handleChange} />
-              {t("available")}
-            </label>
-          </div>
-          <div className="flex justify-end gap-4 mt-6">
-            <button type="button" onClick={onClose} className="bg-gray-300 py-2 px-4 rounded-lg hover:bg-gray-400">Cancel</button>
-            <button type="submit" className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700">{t("save")}</button>
-          </div>
-        </form>
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <label className="block font-semibold">{t("price")}</label>
+                <input type="number" name="price" value={formData.price} onChange={handleChange} step="0.01" className="w-full p-2 border rounded-md" required />
+              </div>
+              <div className="flex-1">
+                <label className="block font-semibold">{t("category")}</label>
+                <input type="text" name="category" value={formData.category} onChange={handleChange} className="w-full p-2 border rounded-md" placeholder="e.g., Appetizers" required />
+              </div>
+            </div>
+             <div>
+              <label className="flex items-center gap-2">
+                <input type="checkbox" name="isAvailable" checked={formData.isAvailable} onChange={handleChange} />
+                {t("available")}
+              </label>
+            </div>
+            <div className="flex justify-end gap-4 mt-6">
+              <button type="button" onClick={onClose} className="bg-gray-300 py-2 px-4 rounded-lg hover:bg-gray-400">Cancel</button>
+              <button type="submit" className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700">{t("save")}</button>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
