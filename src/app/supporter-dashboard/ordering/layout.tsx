@@ -48,7 +48,7 @@ export default function OrderingLayout({
 
   const navLinks = [
     { href: "/supporter-dashboard/ordering", label: t("dashboard") },
-    { href: "/supporter-dashboard/menu", label: t("menu") },
+    { href: "/supporter-dashboard/ordering/menu", label: t("menu") },
     { href: "/supporter-dashboard/settings", label: t("settings") },
     { href: "/supporter-dashboard/reports", label: t("reports") },
   ];
