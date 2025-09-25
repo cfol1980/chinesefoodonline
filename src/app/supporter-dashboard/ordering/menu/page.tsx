@@ -224,7 +224,9 @@ function MenuEditor({ supporterId }: { supporterId: string | null }) {
     );
 }
 
-// --- Default Page Export (Does not accept props directly) ---
+// --- Default Page Export (This is the valid structure) ---
 export default function MenuPage({ supporterId }: { supporterId: string | null }) {
-    return <MenuEditor supporterId={supporterId} />;
+  // This is the actual page component Next.js renders.
+  // Its only job is to render the MenuEditor and pass the prop down.
+  return <MenuEditor supporterId={supporterId} />;
 }
