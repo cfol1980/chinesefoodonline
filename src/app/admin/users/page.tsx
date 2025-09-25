@@ -10,17 +10,16 @@ import { useRouter } from "next/navigation";
 interface UserDoc {
   id: string;
   email: string;
-  name?: string; // Added new field for user's name
-  phone?: string; // Added new field for user's phone number
+  name?: string;
+  phone?: string;
   role: string;
-  ownedSupporterId?: string;
+  ownedSupporterId?: string[]; // make it an array
 }
 
 export default function ManageUsersPage() {
   const [userIsAdmin, setUserIsAdmin] = useState(false);
   const [users, setUsers] = useState<UserDoc[]>([]);
   const [loading, setLoading] = useState(true);
-
   const router = useRouter();
 
   useEffect(() => {
@@ -37,10 +36,21 @@ export default function ManageUsersPage() {
   useEffect(() => {
     async function fetchUsers() {
       const qs = await getDocs(collection(db, "users"));
-      const list = qs.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      })) as UserDoc[];
+      const list = qs.docs.map((d) => {
+        const data = d.data();
+        // Ensure ownedSupporterId is always an array
+        let ownedSupporterId: string[] = [];
+        if (data.ownedSupporterId) {
+          ownedSupporterId = Array.isArray(data.ownedSupporterId)
+            ? data.ownedSupporterId
+            : [data.ownedSupporterId];
+        }
+        return {
+          id: d.id,
+          ...data,
+          ownedSupporterId,
+        } as UserDoc;
+      });
       setUsers(list);
       setLoading(false);
     }
@@ -54,7 +64,11 @@ export default function ManageUsersPage() {
   };
 
   const handleSlugUpdate = async (id: string, newSlug: string) => {
-    await updateDoc(doc(db, "users", id), { ownedSupporterId: newSlug });
+    if (!newSlug) return;
+
+    const userRef = doc(db, "users", id);
+    // Save as array (overwrite or create)
+    await updateDoc(userRef, { ownedSupporterId: [newSlug] });
     alert("Slug assigned!");
   };
 
@@ -68,9 +82,9 @@ export default function ManageUsersPage() {
       <table className="min-w-full bg-white rounded shadow">
         <thead>
           <tr className="bg-gray-200">
-            <th className="py-2 px-4 text-left">Name</th> {/* Added Name header */}
+            <th className="py-2 px-4 text-left">Name</th>
             <th className="py-2 px-4 text-left">Email</th>
-            <th className="py-2 px-4 text-left">Phone</th> {/* Added Phone header */}
+            <th className="py-2 px-4 text-left">Phone</th>
             <th className="py-2 px-4 text-left">Role</th>
             <th className="py-2 px-4 text-left">Owned Supporter</th>
             <th className="py-2 px-4 text-left">Assign Slug</th>
@@ -79,9 +93,9 @@ export default function ManageUsersPage() {
         <tbody>
           {users.map((u) => (
             <tr key={u.id} className="border-t">
-              <td className="py-2 px-4">{u.name || "-"}</td> {/* Display user name */}
+              <td className="py-2 px-4">{u.name || "-"}</td>
               <td className="py-2 px-4">{u.email}</td>
-              <td className="py-2 px-4">{u.phone || "-"}</td> {/* Display user phone */}
+              <td className="py-2 px-4">{u.phone || "-"}</td>
               <td className="py-2 px-4">
                 <select
                   defaultValue={u.role}
@@ -95,15 +109,19 @@ export default function ManageUsersPage() {
                 </select>
               </td>
               <td className="py-2 px-4">
-                {u.ownedSupporterId || "-"}
+                {u.ownedSupporterId && u.ownedSupporterId.length > 0
+                  ? u.ownedSupporterId.join(", ")
+                  : "-"}
               </td>
               <td className="py-2 px-4">
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
-                    const inputValue = (e.currentTarget.querySelector('input') as HTMLInputElement)?.value;
+                    const inputValue = (e.currentTarget.querySelector(
+                      "input"
+                    ) as HTMLInputElement)?.value;
                     if (inputValue) {
-                        handleSlugUpdate(u.id, inputValue);
+                      handleSlugUpdate(u.id, inputValue);
                     }
                   }}
                 >
@@ -111,7 +129,7 @@ export default function ManageUsersPage() {
                     name="slugInput"
                     type="text"
                     placeholder="e.g. enoodle"
-                    defaultValue={u.ownedSupporterId}
+                    defaultValue={u.ownedSupporterId?.[0] || ""}
                     className="border px-2 py-1 rounded mr-2"
                   />
                   <button
