@@ -1,14 +1,12 @@
 'use client';
 
-import { useEffect, useState, useMemo } from "react";
-import { auth, db } from "@/lib/firebase";
-import { onAuthStateChanged, User } from "firebase/auth";
+import React, { useEffect, useState, useMemo } from "react";
+import { db } from "@/lib/firebase";
 import {
   collection,
   query,
   onSnapshot,
   doc,
-  getDoc,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -64,7 +62,7 @@ const translations = {
   },
 };
 
-// --- Form Component (can be in a separate file) ---
+// --- Form Component ---
 type MenuItemFormProps = {
   item: Partial<MenuItem> | null;
   onSave: (data: Omit<MenuItem, "id">) => void;
@@ -78,14 +76,13 @@ function MenuItemForm({ item, onSave, onClose, t }: MenuItemFormProps) {
     description: item?.description || "",
     price: item?.price || 0,
     category: item?.category || "",
-    isAvailable: item?.isAvailable !== false, // Default to true
+    isAvailable: item?.isAvailable !== false,
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     const isCheckbox = type === 'checkbox';
     const isNumber = type === 'number';
-
     const checked = isCheckbox ? (e.target as HTMLInputElement).checked : undefined;
 
     setFormData((prev) => ({
@@ -139,10 +136,8 @@ function MenuItemForm({ item, onSave, onClose, t }: MenuItemFormProps) {
 }
 
 // --- Main Page Component ---
-export default function OrderingDashboardPage() {
+export default function OrderingDashboardPage({ supporterId }: { supporterId: string | null }) {
   // --- State Management ---
-  const [user, setUser] = useState<User | null>(null);
-  const [supporterId, setSupporterId] = useState<string | null>(null);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -158,46 +153,25 @@ export default function OrderingDashboardPage() {
   }, []);
   const t = (key: keyof typeof translations["en"]) => translations[lang][key];
 
-  // --- Data Fetching and Real-time Updates ---
- // --- Corrected Data Fetching and Real-time Updates ---
-useEffect(() => {
-  const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-    if (firebaseUser) {
-      setUser(firebaseUser);
-      const userDocRef = doc(db, "users", firebaseUser.uid);
-      const userDoc = await getDoc(userDocRef);
-
-      if (userDoc.exists() && userDoc.data().ownedSupporterId?.[0]) {
-        const id = userDoc.data().ownedSupporterId[0];
-        setSupporterId(id);
-
-        // --- Start listening for menu changes AFTER supporterId is confirmed ---
-        const menuCollectionRef = collection(db, "supporters", id, "menu");
-        const q = query(menuCollectionRef);
-        const unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
-          const items = snapshot.docs.map(
-            (doc) => ({ id: doc.id, ...doc.data() } as MenuItem)
-          );
-          setMenuItems(items);
-          setLoading(false);
-        });
-
-        // Return the snapshot listener's cleanup function
-        return () => unsubscribeSnapshot();
-
-      } else {
-        console.error("Supporter ID not found for user.");
-        setLoading(false);
-      }
-    } else {
-      setUser(null);
-      setSupporterId(null);
-      setLoading(false);
+  // --- Data Fetching: Now uses the supporterId prop ---
+  useEffect(() => {
+    if (!supporterId) {
+      setLoading(false); // If no ID is passed, stop loading
+      return;
     }
-  });
 
-  return () => unsubscribeAuth();
-}, []); // Empty dependency array ensures this runs only once on mount
+    const menuCollectionRef = collection(db, "supporters", supporterId, "menu");
+    const q = query(menuCollectioneRef);
+    const unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+      const items = snapshot.docs.map(
+        (doc) => ({ id: doc.id, ...doc.data() } as MenuItem)
+      );
+      setMenuItems(items);
+      setLoading(false);
+    });
+
+    return () => unsubscribeSnapshot();
+  }, [supporterId]); // Re-run only when the supporterId prop changes
 
   // --- Group items by category for display ---
   const groupedMenu = useMemo(() => {
