@@ -87,42 +87,51 @@ export default function OrderingLayout({ children }: { children: React.ReactNode
       <div className="flex flex-col md:flex-row min-h-screen bg-gray-100">
         {/* Sidebar for desktop */}
         <aside className="hidden md:flex md:flex-col w-64 bg-white shadow-md">
-            {/* Debug: show current supporterId */}
-      <div className="p-2 text-sm text-gray-500">
-        Current Supporter ID: {supporterId ?? "Not loaded yet"}
+  <div className="p-4 border-b">
+    <div className="font-bold text-xl">{t("title")}</div>
+    {supporterId && (
+      <div className="text-sm text-gray-500 mt-1">
+        Supporter: <span className="font-medium">{supporterId}</span>
       </div>
-          <div className="p-4 border-b font-bold text-xl"> Current Supporter ID: {supporterId ?? "Not loaded yet"} {t("title")}</div>
+    )}
+  </div>
 
-       
+  <nav className="flex-1 p-4 space-y-2">
+    {navLinks.map(({ href, label }) => (
+      <Link
+        key={href}
+        href={href}
+        className={`block p-2 rounded ${
+          pathname === href ? "bg-blue-100 text-blue-700 font-semibold" : "hover:bg-gray-100"
+        }`}
+      >
+        {label}
+      </Link>
+    ))}
+  </nav>
+  <div className="p-4 border-t text-sm text-gray-500">
+    <Link href="/supporter-dashboard">{t("back")}</Link>
+  </div>
+</aside>
 
-          <nav className="flex-1 p-4 space-y-2">
-            {navLinks.map(({ href, label }) => (
-              <Link
-                key={href}
-                href={href}
-                className={`block p-2 rounded ${
-                  pathname === href ? "bg-blue-100 text-blue-700 font-semibold" : "hover:bg-gray-100"
-                }`}
-              >
-                {label}
-              </Link>
-            ))}
-          </nav>
-          <div className="p-4 border-t text-sm text-gray-500">
-            <Link href="/supporter-dashboard">{t("back")}</Link>
-          </div>
-        </aside>
+{/* Mobile header + toggle */}
+<header className="md:hidden bg-white shadow p-4 flex flex-col">
+  <div className="flex justify-between items-center">
+    <span className="font-bold text-lg">{t("title")}</span>
+    <button
+      onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+      className="p-2 rounded-md border"
+    >
+      ☰
+    </button>
+  </div>
+  {supporterId && (
+    <div className="mt-1 text-sm text-gray-500">
+      Supporter: <span className="font-medium">{supporterId}</span>
+    </div>
+  )}
+</header>
 
-        {/* Mobile header + toggle */}
-        <header className="md:hidden bg-white shadow p-4 flex justify-between items-center">
-          <span className="font-bold">{t("title")}</span>
-          <button
-            onClick={() => setIsMobileMenuOpen((prev) => !prev)}
-            className="p-2 rounded-md border"
-          >
-            ☰
-          </button>
-        </header>
 
         {/* Mobile menu */}
         {isMobileMenuOpen && (
