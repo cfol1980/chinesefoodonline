@@ -88,6 +88,12 @@ export default function OrderingLayout({ children }: { children: React.ReactNode
         {/* Sidebar for desktop */}
         <aside className="hidden md:flex md:flex-col w-64 bg-white shadow-md">
           <div className="p-4 border-b font-bold text-xl">{t("title")}</div>
+          <div>
+        {/* Debug: show current supporterId */}
+        <span className="text-sm text-gray-500">
+          Supporter ID: {supporterId ?? "Not loaded"}
+        </span>
+      </div>
           <nav className="flex-1 p-4 space-y-2">
             {navLinks.map(({ href, label }) => (
               <Link
