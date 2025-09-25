@@ -201,7 +201,7 @@ export default function MenuPage() {
       return;
     }
 
-    const menuCollectionRef = collection(db, "supporters", supporterId, "menu");
+    const menuCollectionRef = collection(db, "supporters", supporterId, "orderingMenu");
     const q = query(menuCollectionRef);
     const unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
       const items = snapshot.docs.map(
@@ -233,7 +233,7 @@ export default function MenuPage() {
   };
   const handleSaveItem = async (itemData: Omit<MenuItem, "id">) => {
     if (!supporterId) return;
-    const menuCollectionRef = collection(db, "supporters", supporterId, "menu");
+    const menuCollectionRef = collection(db, "supporters", supporterId, "orderingMenu");
     if (currentItem?.id) {
       await updateDoc(doc(menuCollectionRef, currentItem.id), itemData);
     } else {
@@ -244,7 +244,7 @@ export default function MenuPage() {
   const handleDeleteItem = async (itemId: string) => {
     if (!supporterId) return;
     if (window.confirm(t("confirmDelete"))) {
-      await deleteDoc(doc(db, "supporters", supporterId, "menu", itemId));
+      await deleteDoc(doc(db, "supporters", supporterId, "orderingMenu", itemId));
     }
   };
 
