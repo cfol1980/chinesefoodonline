@@ -170,6 +170,12 @@ export default function ManageUsersPage() {
                 </form>
               </td>
               <td className="py-2 px-4">
+              <Link
+    href={`/admin/supporters/${u.id}`}
+    className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+  >
+    Edit
+  </Link>
                 <button
                   onClick={() => handleDeleteUser(u.id)}
                   className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
