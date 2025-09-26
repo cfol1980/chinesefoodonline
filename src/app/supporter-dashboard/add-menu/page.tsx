@@ -19,20 +19,31 @@ export default function AddMenuItemPage() {
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (!firebaseUser) return;
+      if (!firebaseUser) {
+        setUser(null);
+        setRole(null);
+        return;
+      }
 
       setUser(firebaseUser);
       const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
       if (userDoc.exists()) {
         const data = userDoc.data();
         setRole(data.role);
-        if (data.role === "supporter") {
-          setSlug(data.ownedSupporterId);
+
+        // --- CORRECTED LOGIC IS HERE ---
+        // Check if ownedSupporterId is an array and has at least one slug
+        if (data.role === "supporter" && Array.isArray(data.ownedSupporterId) && data.ownedSupporterId.length > 0) {
+          
+          // Get the FIRST slug from the array
+          const supporterSlug = data.ownedSupporterId[0];
+          setSlug(supporterSlug);
         }
       }
     });
     return () => unsub();
   }, []);
+  
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();

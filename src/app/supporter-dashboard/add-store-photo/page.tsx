@@ -26,23 +26,22 @@ export default function AddStorePhotoPage() {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (!firebaseUser) return;
 
-      const userSnap = await getDoc(doc(db, "users", firebaseUser.uid));
-      if (userSnap.exists()) {
-        const data = userSnap.data();
-        if (data.role === "supporter" && data.ownedSupporterId) {
+      setUser(firebaseUser);
+      const docSnap = await getDoc(doc(db, "users", firebaseUser.uid));
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        
+        // --- CORRECTED LOGIC IS HERE ---
+        // Check if the user is a supporter and has a valid slug array
+        if (data.role === "supporter" && Array.isArray(data.ownedSupporterId) && data.ownedSupporterId.length > 0) {
           setRole("supporter");
-          setSlug(data.ownedSupporterId);
-
-          const supporterSnap = await getDoc(
-            doc(db, "supporters", data.ownedSupporterId)
-          );
-          if (supporterSnap.exists()) {
-            const sup = supporterSnap.data();
-            setCurrentCount((sup.storeImages || []).length);
-          }
+          // Get the FIRST slug from the array
+          const supporterSlug = data.ownedSupporterId[0];
+          setSlug(supporterSlug);
         }
       }
     });
+
     return () => unsub();
   }, []);
 
