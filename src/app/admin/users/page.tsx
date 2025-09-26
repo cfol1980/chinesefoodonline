@@ -117,6 +117,7 @@ export default function ManageUsersPage() {
             <th className="py-2 px-4 text-left">Role</th>
             <th className="py-2 px-4 text-left">Owned Supporters</th>
             <th className="py-2 px-4 text-left">Assign Slug</th>
+            <th className="py-2 px-4 text-left">Edit</th> 
             <th className="py-2 px-4 text-left">Delete</th>
           </tr>
         </thead>
