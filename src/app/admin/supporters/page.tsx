@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { getAuth, onAuthStateChanged, User } from "firebase/auth";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   collection,
   getDocs,
@@ -216,6 +218,7 @@ export default function SupportersPage() {
             <th className="border px-2 py-1">Phone</th>
             <th className="border px-2 py-1">Description</th>
             <th className="border px-2 py-1">Logo</th>
+            <th className="border px-2 py-1">Edit</th>
             <th className="border px-2 py-1">Actions</th>
           </tr>
         </thead>
@@ -232,6 +235,14 @@ export default function SupportersPage() {
                 )}
               </td>
               <td className="border px-2 py-1">
+              <Link
+    href={`/admin/supporters/${s.id}`}
+    className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+  >
+    Edit
+  </Link>
+  </td>
+  <td className="border px-2 py-1">
                 <button
                   onClick={() => handleDeleteSupporter(s.id)}
                   className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
