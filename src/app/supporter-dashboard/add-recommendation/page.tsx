@@ -30,9 +30,14 @@ export default function AddRecommendationPage() {
       const docSnap = await getDoc(doc(db, "users", firebaseUser.uid));
       if (docSnap.exists()) {
         const data = docSnap.data();
-        if (data.role === "supporter" && data.ownedSupporterId) {
+        
+        // --- CORRECTED LOGIC IS HERE ---
+        // Check if the user is a supporter and has a valid slug array
+        if (data.role === "supporter" && Array.isArray(data.ownedSupporterId) && data.ownedSupporterId.length > 0) {
           setRole("supporter");
-          setSlug(data.ownedSupporterId);
+          // Get the FIRST slug from the array
+          const supporterSlug = data.ownedSupporterId[0];
+          setSlug(supporterSlug);
         }
       }
     });

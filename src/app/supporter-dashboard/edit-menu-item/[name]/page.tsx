@@ -36,43 +36,40 @@ export default function EditMenuItemPage() {
         return;
       }
 
-      setUser(firebaseUser); // Set the user state
+      setUser(firebaseUser);
 
       const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
-      if (!userDoc.exists() || userDoc.data().role !== "supporter") {
-        setRole("denied"); // Set the role to denied
-        setLoading(false);
-        return;
-      }
-      
-      setRole(userDoc.data().role); // Set the role state
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        setRole(userData.role);
 
-      const supporterSlug = userDoc.data().ownedSupporterId;
-      setSlug(supporterSlug);
+        // --- CORRECTED LOGIC IS HERE ---
+        if (userData.role === "supporter" && Array.isArray(userData.ownedSupporterId) && userData.ownedSupporterId.length > 0) {
+          
+          // 1. Get the FIRST slug from the array
+          const supporterSlug = userData.ownedSupporterId[0];
+          setSlug(supporterSlug);
 
-      const decodedName = decodeURIComponent(itemNameParam as string);
-      setOriginalName(decodedName);
-
-      const supporterDoc = await getDoc(doc(db, "supporters", supporterSlug));
-      if (supporterDoc.exists()) {
-        const data = supporterDoc.data();
-        const menuItems = data.menu || [];
-        const foundItem = menuItems.find((item: MenuItem) => item.name === decodedName);
-        if (foundItem) {
-          // Explicitly handle image and path to avoid undefined
-          setCurrentMenuItem({
-            name: foundItem.name,
-            image: foundItem.image || '', // Fallback to empty string
-            path: foundItem.path || ''     // Fallback to empty string
-          });
+          // 2. Use the STRING slug to fetch the document
+          const supporterDoc = await getDoc(doc(db, "supporters", supporterSlug));
+          if (supporterDoc.exists()) {
+            const data = supporterDoc.data();
+            setMenuItems(data.menu || []);
+          }
+        } else {
+          // Deny access if not a supporter or no slug
+          setRole("denied");
         }
+      } else {
+        setRole("denied");
       }
+
       setLoading(false);
     });
 
     return () => unsub();
-  }, [router, itemNameParam]);
-
+  }, [router]);
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!slug || !currentMenuItem || !originalName || isSubmitting) return;
