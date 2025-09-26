@@ -17,13 +17,15 @@ interface MenuItem {
 
 export default function EditMenuItemPage() {
   const router = useRouter();
-  const { name: itemNameParam } = useParams();
+  const params = useParams();
+  // Decode the URL parameter in case it has special characters
+  const itemNameParam = params.name ? decodeURIComponent(params.name as string) : "";
 
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState<string | null>(null);
   const [slug, setSlug] = useState<string | null>(null);
   const [currentMenuItem, setCurrentMenuItem] = useState<MenuItem | null>(null);
-  const [originalName, setOriginalName] = useState<string | null>(null);
+  const [originalName, setOriginalName] = useState<string>("");
   const [newFile, setNewFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,7 +37,6 @@ export default function EditMenuItemPage() {
         router.push("/login");
         return;
       }
-
       setUser(firebaseUser);
 
       const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
@@ -43,33 +44,36 @@ export default function EditMenuItemPage() {
         const userData = userDoc.data();
         setRole(userData.role);
 
-        // --- CORRECTED LOGIC IS HERE ---
         if (userData.role === "supporter" && Array.isArray(userData.ownedSupporterId) && userData.ownedSupporterId.length > 0) {
-          
-          // 1. Get the FIRST slug from the array
           const supporterSlug = userData.ownedSupporterId[0];
           setSlug(supporterSlug);
 
-          // 2. Use the STRING slug to fetch the document
           const supporterDoc = await getDoc(doc(db, "supporters", supporterSlug));
           if (supporterDoc.exists()) {
-            const data = supporterDoc.data();
-            setMenuItems(data.menu || []);
+            const supporterData = supporterDoc.data();
+            const menuArray: MenuItem[] = supporterData.menu || [];
+            
+            // --- CORRECTED LOGIC IS HERE ---
+            // Find the specific menu item to edit from the array
+            const itemToEdit = menuArray.find(item => item.name === itemNameParam);
+
+            if (itemToEdit) {
+              setCurrentMenuItem(itemToEdit);
+              setOriginalName(itemToEdit.name); // Store the original name for the update logic
+            }
           }
         } else {
-          // Deny access if not a supporter or no slug
           setRole("denied");
         }
       } else {
         setRole("denied");
       }
-
       setLoading(false);
     });
 
     return () => unsub();
-  }, [router]);
-  
+  }, [router, itemNameParam]); // Add itemNameParam to dependency array
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!slug || !currentMenuItem || !originalName || isSubmitting) return;
