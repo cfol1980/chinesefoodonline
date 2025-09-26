@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getAuth, onAuthStateChanged, User } from "firebase/auth";
 import {
   collection,
   getDocs,
@@ -18,7 +19,12 @@ import {
 } from "firebase/storage";
 import { db, storage } from "@/lib/firebase";
 
+// Get the auth instance
+const auth = getAuth();
+
 export default function SupportersPage() {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true); // <-- Loading state
   const [supporters, setSupporters] = useState<any[]>([]);
   const [slug, setSlug] = useState("");
   const [name, setName] = useState("");
@@ -27,7 +33,24 @@ export default function SupportersPage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [search, setSearch] = useState("");
 
-  // Fetch supporters
+  // 1. Listen for authentication state changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setIsLoading(false);
+      if (currentUser) {
+        // This is the correct way to get the UID for debugging
+        console.log("✅ Firebase Auth Ready. User UID:", currentUser.uid);
+      } else {
+        console.log("⛔️ User is not logged in.");
+      }
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, []);
+
+  // Fetch supporters only after user is confirmed
   const fetchSupporters = async () => {
     const querySnapshot = await getDocs(collection(db, "supporters"));
     const data = querySnapshot.docs.map((doc) => ({
@@ -38,18 +61,25 @@ export default function SupportersPage() {
   };
 
   useEffect(() => {
-    fetchSupporters();
-  }, []);
+    if (user) { // <-- Only fetch data if the user is logged in
+      fetchSupporters();
+    }
+  }, [user]); // <-- Rerun when user state changes
 
   // Add supporter
   const handleAddSupporter = async () => {
+    // Add a guard clause to ensure user is authenticated
+    if (!user) {
+      alert("Authentication error. Please refresh and try again.");
+      return;
+    }
+
     const normalizedSlug = slug.trim().toLowerCase();
     if (!normalizedSlug || !name.trim()) {
       alert("Slug and Name are required.");
       return;
     }
 
-    // Check for duplicates
     const existingDoc = await getDoc(doc(db, "supporters", normalizedSlug));
     if (existingDoc.exists()) {
       alert(`The slug "${normalizedSlug}" is already taken. Please choose another.`);
@@ -60,9 +90,9 @@ export default function SupportersPage() {
     let logoPath = "";
 
     if (logoFile) {
-      // Save under logos/{slug}/
       const storagePath = `logos/${normalizedSlug}/${Date.now()}_${logoFile.name}`;
       const storageRef = ref(storage, storagePath);
+      // This upload will now be properly authenticated
       await uploadBytes(storageRef, logoFile);
       logoUrl = await getDownloadURL(storageRef);
       logoPath = storagePath;
@@ -88,21 +118,15 @@ export default function SupportersPage() {
   // Delete supporter + logo folder
   const handleDeleteSupporter = async (id: string) => {
     if (!confirm("Are you sure you want to delete this supporter?")) return;
-
-    // Delete Firestore doc
     await deleteDoc(doc(db, "supporters", id));
-
-    // Delete all files under logos/{id}/
     const folderRef = ref(storage, `logos/${id}`);
     const { items } = await listAll(folderRef);
     for (const itemRef of items) {
       await deleteObject(itemRef);
     }
-
     fetchSupporters();
   };
 
-  // Filter supporters by search (slug, name, phone)
   const filteredSupporters = supporters.filter((s) => {
     const q = search.toLowerCase();
     return (
@@ -111,6 +135,15 @@ export default function SupportersPage() {
       (s.phone && s.phone.toLowerCase().includes(q))
     );
   });
+  
+  // 2. Render loading and unauthenticated states
+  if (isLoading) {
+    return <div className="p-6"><h2>Loading Authentication...</h2></div>;
+  }
+
+  if (!user) {
+    return <div className="p-6"><h2>Please log in to manage supporters.</h2></div>;
+  }
 
   return (
     <div className="p-6">
