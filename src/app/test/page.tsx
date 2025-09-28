@@ -162,7 +162,7 @@ export default function TestStoragePage() {
           ) : (
             // Show Step 2 form if a slug has been created
             <form onSubmit={handleLogoUpload} className="space-y-4 bg-blue-50 p-4 rounded-lg shadow">
-              <h2 className="text-xl font-semibold">Step 2: Upload Logo for "{activeSlug}"</h2>
+              <h2 className="text-xl font-semibold">Step 2: Upload Logo for '{activeSlug}'</h2>
               <div>
                 <label className="block font-semibold">Logo Image</label>
                 <input
