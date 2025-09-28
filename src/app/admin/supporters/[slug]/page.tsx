@@ -101,7 +101,8 @@ export default function AdminEditSupporter() {
         }
       }
 
-      const newPath = `logos/${Date.now()}-${logoFile.name}`;
+    //  const newPath = `logos/${Date.now()}-${logoFile.name}`;
+    const newPath = `logos/${slug}/${Date.now()}-${logoFile.name}`;
       const sRef = storageRef(storage, newPath);
       await uploadBytes(sRef, logoFile);
       updatedLogoUrl = await getDownloadURL(sRef);
