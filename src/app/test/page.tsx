@@ -85,7 +85,7 @@ export default function TestStoragePage() {
       return;
     }
 
-    const logoPath = `logos/${activeSlug}/${Date.now()}-${logoFile.name}`;
+    const logoPath = `logos/${Date.now()}-${logoFile.name}`;
     console.log("Uploading logo to path:", logoPath);
 
     try {
