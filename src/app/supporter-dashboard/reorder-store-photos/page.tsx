@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, User } from "firebase/auth";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
@@ -14,7 +14,7 @@ interface ImgItem {
 }
 
 export default function ReorderStorePhotosPage() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [slug, setSlug] = useState<string | null>(null);
   const [photoItems, setPhotoItems] = useState<ImgItem[]>([]);
@@ -38,14 +38,26 @@ export default function ReorderStorePhotosPage() {
         return;
       }
       setRole(userDoc.data().role);
-      const supporterSlug = userDoc.data().ownedSupporterId;
-      setSlug(supporterSlug);
 
-      const supporterDoc = await getDoc(doc(db, "supporters", supporterSlug));
-      if (supporterDoc.exists()) {
-        const data = supporterDoc.data();
-        setPhotoItems(data.storeImages || []);
+      // --- CORRECTED SECTION ---
+      // ownedSupporterId is an array. We need to select one slug from it.
+      // This example takes the first one.
+      const supporterSlugs = userDoc.data().ownedSupporterId || [];
+
+      if (supporterSlugs.length > 0) {
+        const currentSlug = supporterSlugs[0];
+        setSlug(currentSlug);
+
+        // Fetch the supporter document using the single, correct slug
+        const supporterDoc = await getDoc(doc(db, "supporters", currentSlug));
+        if (supporterDoc.exists()) {
+          const data = supporterDoc.data();
+          setPhotoItems(data.storeImages || []);
+        }
+      } else {
+        console.error("User does not have any supporter slugs assigned.");
       }
+      
       setLoading(false);
     });
     return () => unsub();
