@@ -24,7 +24,12 @@ export default function EditSupporterPage() {
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (!firebaseUser) return;
+      if (!firebaseUser) {
+        // Handle user not logged in, maybe redirect
+        setUser(null);
+        setRole(null);
+        return;
+      }
 
       setUser(firebaseUser);
 
@@ -33,12 +38,18 @@ export default function EditSupporterPage() {
         const data = userDoc.data();
         setRole(data.role);
 
-        if (data.role === "supporter" && data.ownedSupporterId) {
-          const supporterSlug = data.ownedSupporterId;
+        // --- CORRECTED LOGIC IS HERE ---
+        // Check if ownedSupporterId is an array and has at least one slug
+        if (data.role === "supporter" && Array.isArray(data.ownedSupporterId) && data.ownedSupporterId.length > 0) {
+          
+          // Get the FIRST slug from the array
+          const supporterSlug = data.ownedSupporterId[0]; 
           setSlug(supporterSlug);
 
+          // Now, supporterSlug is a string, and this will work
           const supRef = doc(db, "supporters", supporterSlug);
           const supSnap = await getDoc(supRef);
+
           if (supSnap.exists()) {
             const sup = supSnap.data();
             setName(sup.name || "");
@@ -55,7 +66,7 @@ export default function EditSupporterPage() {
     });
 
     return () => unsub();
-  }, []);
+  }, [])
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();

@@ -1,10 +1,8 @@
-// src/app/supporter-dashboard/reorder-menu/page.tsx
-
 "use client";
 
 import { useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, User } from "firebase/auth";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
@@ -16,7 +14,7 @@ interface MenuItem {
 }
 
 export default function ReorderMenuPage() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [slug, setSlug] = useState<string | null>(null);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -32,24 +30,36 @@ export default function ReorderMenuPage() {
         return;
       }
 
-      setUser(firebaseUser); // Set the user state
+      setUser(firebaseUser);
 
       const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
       if (!userDoc.exists() || userDoc.data().role !== "supporter") {
-        setRole("denied"); // Set role to denied if not a supporter
+        setRole("denied");
         setLoading(false);
         return;
       }
       
-      setRole(userDoc.data().role); // Set the role state
-      const supporterSlug = userDoc.data().ownedSupporterId;
-      setSlug(supporterSlug);
+      setRole(userDoc.data().role);
+      
+      // --- CORRECTED SECTION ---
+      // ownedSupporterId is an array. We need to select one slug from it.
+      // This example takes the first one.
+      const supporterSlugs = userDoc.data().ownedSupporterId || [];
+      
+      if (supporterSlugs.length > 0) {
+        const currentSlug = supporterSlugs[0];
+        setSlug(currentSlug);
 
-      const supporterDoc = await getDoc(doc(db, "supporters", supporterSlug));
-      if (supporterDoc.exists()) {
-        const data = supporterDoc.data();
-        setMenuItems(data.menu || []);
+        // Fetch the supporter document using the single, correct slug
+        const supporterDoc = await getDoc(doc(db, "supporters", currentSlug));
+        if (supporterDoc.exists()) {
+          const data = supporterDoc.data();
+          setMenuItems(data.menu || []);
+        }
+      } else {
+        console.error("User does not have any supporter slugs assigned.");
       }
+      
       setLoading(false);
     });
 
@@ -89,7 +99,7 @@ export default function ReorderMenuPage() {
   if (loading) {
     return <div className="p-6">Loading menu items...</div>;
   }
-  // Check the role to grant or deny access
+
   if (role !== "supporter") {
     return <div className="p-6 text-red-600">You do not have access to this page.</div>;
   }

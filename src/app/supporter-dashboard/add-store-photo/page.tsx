@@ -29,12 +29,18 @@ export default function AddStorePhotoPage() {
       const userSnap = await getDoc(doc(db, "users", firebaseUser.uid));
       if (userSnap.exists()) {
         const data = userSnap.data();
-        if (data.role === "supporter" && data.ownedSupporterId) {
-          setRole("supporter");
-          setSlug(data.ownedSupporterId);
 
+        // --- CORRECTED LOGIC IS HERE ---
+        if (data.role === "supporter" && Array.isArray(data.ownedSupporterId) && data.ownedSupporterId.length > 0) {
+          setRole("supporter");
+          
+          // 1. Get the FIRST slug from the array
+          const supporterSlug = data.ownedSupporterId[0];
+          setSlug(supporterSlug);
+
+          // 2. Use the STRING slug to fetch the document
           const supporterSnap = await getDoc(
-            doc(db, "supporters", data.ownedSupporterId)
+            doc(db, "supporters", supporterSlug)
           );
           if (supporterSnap.exists()) {
             const sup = supporterSnap.data();

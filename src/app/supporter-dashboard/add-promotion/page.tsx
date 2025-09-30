@@ -40,10 +40,14 @@ export default function AddPromotionPage() {
         const data = userDoc.data();
         setRole(data.role);
 
-        if (data.role === "supporter" && data.ownedSupporterId) {
-          setSlug(data.ownedSupporterId);
-          
-          const supporterDoc = await getDoc(doc(db, "supporters", data.ownedSupporterId));
+        // --- CORRECTED LOGIC IS HERE ---
+        if (data.role === "supporter" && Array.isArray(data.ownedSupporterId) && data.ownedSupporterId.length > 0) {
+          // 1. Get the FIRST slug from the array
+          const supporterSlug = data.ownedSupporterId[0];
+          setSlug(supporterSlug);
+
+          // 2. Use the STRING slug to fetch the document
+          const supporterDoc = await getDoc(doc(db, "supporters", supporterSlug));
           if (supporterDoc.exists()) {
             const supporterData = supporterDoc.data();
             if (supporterData.promotion) {
@@ -61,6 +65,7 @@ export default function AddPromotionPage() {
             }
           }
         } else {
+          // If not a supporter or no slug, redirect
           router.push("/dashboard");
         }
       } else {
@@ -70,6 +75,7 @@ export default function AddPromotionPage() {
     });
     return () => unsub();
   }, [router]);
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;

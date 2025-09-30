@@ -1,9 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import {
+  getAuth,
+  onAuthStateChanged,
+  signInWithPopup,
+  GoogleAuthProvider,
+} from "firebase/auth";
 import { getFirestore, doc, getDoc } from "firebase/firestore";
-import { app } from "@/lib/firebase"; // <-- your firebase config
+import { app } from "@/lib/firebase";
 import Link from "next/link";
 
 export default function AdminPage() {
@@ -15,7 +20,6 @@ export default function AdminPage() {
   const [role, setRole] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Google sign-in
   const loginWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     try {
@@ -66,7 +70,7 @@ export default function AdminPage() {
         <h1 className="text-xl font-bold mb-4">Admin Login</h1>
         <button
           onClick={loginWithGoogle}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 w-full sm:w-auto"
         >
           Sign in with Google
         </button>
@@ -84,17 +88,24 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
-      <p>Welcome, {user.email}</p>
-      <p></p>
-      <Link href="/admin/supporters" className="p-4 bg-green-200 rounded shadow hover:bg-green-300">
-    Manage Supporters
-  </Link>
-  <Link href="/admin/users" className="p-4 bg-yellow-200 rounded shadow hover:bg-yellow-300">
-    Manage Users
-  </Link>
-  </div>
-    
+    <div className="p-6 max-w-2xl mx-auto">
+      <h1 className="text-2xl font-bold mb-4 text-center">Admin Dashboard</h1>
+      <p className="text-center mb-6">Welcome, {user.email}</p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Link
+          href="/admin/supporters"
+          className="block p-6 text-center bg-green-200 rounded shadow hover:bg-green-300 transition"
+        >
+          Manage Supporters
+        </Link>
+        <Link
+          href="/admin/users"
+          className="block p-6 text-center bg-yellow-200 rounded shadow hover:bg-yellow-300 transition"
+        >
+          Manage Users
+        </Link>
+      </div>
+    </div>
   );
 }
