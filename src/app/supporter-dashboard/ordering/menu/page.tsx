@@ -11,200 +11,311 @@ import {
   updateDoc,
   deleteDoc,
   Timestamp,
-  where,
-  orderBy,
 } from "firebase/firestore";
-
-// --- Type Definitions ---
-
-interface Category {
-  id: string;
-  name: string;
-  description?: string;
-  imageUrl?: string;
-  displayOrder: number;
-}
+import { useSupporter } from "../SupporterContext";
 
 interface MenuItem {
   id: string;
   name: string;
-  description?: string;
-  imageUrl?: string;
+  description: string;
   price: number;
+  category: string;
   isAvailable: boolean;
-  categoryId: string;
-  displayOrder: number;
-  paperMenuId?: string;
-  sizes?: { name: string; price: number }[];
-  choices?: { name:string; price: number }[];
 }
 
-// --- Main Logic Component (This is NOT the default export) ---
-function MenuEditor({ supporterId }: { supporterId: string | null }) {
-    const [activeTab, setActiveTab] = useState<"items" | "categories">("items");
+const translations = {
+  en: {
+    title: "Menu Management",
+    loading: "Loading menu...",
+    noItems: "No menu items found. Click 'Add New Item' to get started!",
+    addNewItem: "+ Add New Item",
+    editItem: "Edit Menu Item",
+    category: "Category",
+    price: "Price",
+    description: "Description",
+    name: "Item Name",
+    available: "Available",
+    save: "Save Changes",
+    delete: "Delete",
+    edit: "Edit",
+    confirmDelete: "Are you sure you want to delete this item?",
+    errorFetching:
+      "Could not load supporter data. Please ensure you are logged in correctly.",
+  },
+  zh: {
+    title: "菜单管理",
+    loading: "菜单加载中...",
+    noItems: "未找到菜单项。点击“添加新菜单项”开始！",
+    addNewItem: "+ 添加新菜单项",
+    editItem: "编辑菜单项",
+    category: "类别",
+    price: "价格",
+    description: "描述",
+    name: "餐品名称",
+    available: "上架",
+    save: "保存更改",
+    delete: "删除",
+    edit: "编辑",
+    confirmDelete: "您确定要删除此餐品吗？",
+    errorFetching: "无法加载商家数据。请确保您已正确登录。",
+  },
+};
 
-    return (
-        <div>
-            <div className="flex border-b mb-6">
-                <button
-                    onClick={() => setActiveTab("items")}
-                    className={`py-2 px-4 text-lg ${
-                        activeTab === "items"
-                        ? "border-b-2 border-blue-600 font-semibold text-blue-600"
-                        : "text-gray-500"
-                    }`}
-                >
-                    Menu Items
-                </button>
-                <button
-                    onClick={() => setActiveTab("categories")}
-                    className={`py-2 px-4 text-lg ${
-                        activeTab === "categories"
-                        ? "border-b-2 border-blue-600 font-semibold text-blue-600"
-                        : "text-gray-500"
-                    }`}
-                >
-                    Categories
-                </button>
+type MenuItemFormProps = {
+  item: Partial<MenuItem> | null;
+  onSave: (data: Omit<MenuItem, "id">) => void;
+  onClose: () => void;
+  t: (key: keyof typeof translations["en"]) => string;
+};
+
+function MenuItemForm({ item, onSave, onClose, t }: MenuItemFormProps) {
+  const [formData, setFormData] = useState({
+    name: item?.name || "",
+    description: item?.description || "",
+    price: item?.price || 0,
+    category: item?.category || "",
+    isAvailable: item?.isAvailable !== false,
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target;
+    const isCheckbox = type === "checkbox";
+    const isNumber = type === "number";
+    const checked = isCheckbox ? (e.target as HTMLInputElement).checked : undefined;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: isCheckbox ? checked : isNumber ? parseFloat(value) : value,
+    }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(formData);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+      <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+        <h2 className="text-2xl font-bold mb-6">
+          {item?.id ? t("editItem") : t("addNewItem")}
+        </h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block font-semibold">{t("name")}</label>
+            <input
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              className="w-full p-2 border rounded-md"
+              required
+            />
+          </div>
+          <div>
+            <label className="block font-semibold">{t("description")}</label>
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              className="w-full p-2 border rounded-md"
+            ></textarea>
+          </div>
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <label className="block font-semibold">{t("price")}</label>
+              <input
+                type="number"
+                name="price"
+                value={formData.price}
+                onChange={handleChange}
+                step="0.01"
+                className="w-full p-2 border rounded-md"
+                required
+              />
             </div>
-
-            {activeTab === "items" && <MenuItemsManager supporterId={supporterId} />}
-            {activeTab === "categories" && <CategoriesManager supporterId={supporterId} />}
-        </div>
-    );
+            <div className="flex-1">
+              <label className="block font-semibold">{t("category")}</label>
+              <input
+                type="text"
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                className="w-full p-2 border rounded-md"
+                placeholder="e.g., Appetizers"
+                required
+              />
+            </div>
+          </div>
+          <div>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                name="isAvailable"
+                checked={formData.isAvailable}
+                onChange={handleChange}
+              />
+              {t("available")}
+            </label>
+          </div>
+          <div className="flex justify-end gap-4 mt-6">
+            <button
+              type="button"
+              onClick={onClose}
+              className="bg-gray-300 py-2 px-4 rounded-lg hover:bg-gray-400"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700"
+            >
+              {t("save")}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 }
 
-// --- Categories Manager Component ---
-function CategoriesManager({ supporterId }: { supporterId: string | null }) {
-    const [categories, setCategories] = useState<Category[]>([]);
-    const [loading, setLoading] = useState(true);
+export default function MenuPage() {
+  const { supporterId } = useSupporter();
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentItem, setCurrentItem] = useState<Partial<MenuItem> | null>(null);
+  const [lang, setLang] = useState<"en" | "zh">("en");
 
-    useEffect(() => {
-        if (!supporterId) {
-            setLoading(false);
-            return;
-        }
-        const categoriesQuery = query(
-            collection(db, "supporters", supporterId, "menuCategories"),
-            orderBy("displayOrder")
-        );
-        const unsubscribe = onSnapshot(categoriesQuery, (snapshot) => {
-            const fetchedCategories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
-            setCategories(fetchedCategories);
-            setLoading(false);
-        });
-        return () => unsubscribe();
-    }, [supporterId]);
+  useEffect(() => {
+    if (typeof navigator !== "undefined") {
+      const browserLang = navigator.language || navigator.languages?.[0] || "en";
+      if (browserLang.toLowerCase().startsWith("zh")) setLang("zh");
+    }
+  }, []);
 
-    if (loading) return <div>Loading categories...</div>;
-    if (!supporterId) return <div>Could not load supporter data.</div>;
+  const t = (key: keyof typeof translations["en"]) => translations[lang][key];
 
-    return (
-        <div>
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold">Manage Categories</h2>
-                <button className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700">
-                    + Add Category
-                </button>
-            </div>
-            <div className="space-y-2">
-                {categories.map(category => (
-                    <div key={category.id} className="bg-white p-4 rounded-lg shadow-sm flex justify-between items-center">
-                        <p className="font-bold">{category.name}</p>
-                        <div>
-                            <button className="text-blue-600 hover:underline mr-4">Edit</button>
-                            <button className="text-red-600 hover:underline">Delete</button>
-                        </div>
+  useEffect(() => {
+    if (!supporterId) {
+      if (document.readyState === "complete") setLoading(false);
+      return;
+    }
+
+    const menuCollectionRef = collection(db, "supporters", supporterId, "orderingMenu");
+    const q = query(menuCollectionRef);
+    const unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+      const items = snapshot.docs.map(
+        (doc) => ({ id: doc.id, ...doc.data() } as MenuItem)
+      );
+      setMenuItems(items);
+      setLoading(false);
+    });
+
+    return () => unsubscribeSnapshot();
+  }, [supporterId]);
+
+  const groupedMenu = useMemo(() => {
+    return menuItems.reduce((acc, item) => {
+      const category = item.category || "Uncategorized";
+      if (!acc[category]) acc[category] = [];
+      acc[category].push(item);
+      return acc;
+    }, {} as Record<string, MenuItem[]>);
+  }, [menuItems]);
+
+  const handleOpenModal = (item: Partial<MenuItem> | null = null) => {
+    setCurrentItem(item);
+    setIsModalOpen(true);
+  };
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setCurrentItem(null);
+  };
+  const handleSaveItem = async (itemData: Omit<MenuItem, "id">) => {
+    if (!supporterId) return;
+    const menuCollectionRef = collection(db, "supporters", supporterId, "orderingMenu");
+    if (currentItem?.id) {
+      await updateDoc(doc(menuCollectionRef, currentItem.id), itemData);
+    } else {
+      await addDoc(menuCollectionRef, { ...itemData, createdAt: Timestamp.now() });
+    }
+    handleCloseModal();
+  };
+  const handleDeleteItem = async (itemId: string) => {
+    if (!supporterId) return;
+    if (window.confirm(t("confirmDelete"))) {
+      await deleteDoc(doc(db, "supporters", supporterId, "orderingMenu", itemId));
+    }
+  };
+
+  if (loading) {
+    return <div className="text-center p-8">{t("loading")}</div>;
+  }
+
+  if (!supporterId) {
+    return <div className="text-center text-red-500 p-8">{t("errorFetching")}</div>;
+  }
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">{t("title")}</h1>
+        <button
+          onClick={() => handleOpenModal()}
+          className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          {t("addNewItem")}
+        </button>
+      </div>
+      {menuItems.length === 0 ? (
+        <p className="text-center text-gray-500 p-8 bg-white rounded-lg shadow-md">
+          {t("noItems")}
+        </p>
+      ) : (
+        <div className="space-y-6">
+          {Object.entries(groupedMenu).map(([category, items]) => (
+            <div key={category}>
+              <h2 className="text-xl font-semibold mb-3 border-b pb-2">{category}</h2>
+              <div className="space-y-2">
+                {items.map((item) => (
+                  <div
+                    key={item.id}
+                    className="bg-white p-4 rounded-lg shadow-sm flex justify-between items-center"
+                  >
+                    <div>
+                      <p className="font-bold">{item.name}</p>
+                      <p className="text-sm text-gray-600">{item.description}</p>
                     </div>
-                ))}
-                {categories.length === 0 && <p className="text-gray-500 text-center p-4">No categories created yet.</p>}
-            </div>
-        </div>
-    );
-}
-
-// --- Menu Items Manager Component ---
-function MenuItemsManager({ supporterId }: { supporterId: string | null }) {
-    const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-    const [categories, setCategories] = useState<Category[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        if (!supporterId) {
-            setLoading(false);
-            return;
-        }
-        const categoriesQuery = query(
-            collection(db, "supporters", supporterId, "menuCategories"),
-            orderBy("displayOrder")
-        );
-        const unsubCategories = onSnapshot(categoriesQuery, (snapshot) => {
-            setCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category)));
-        });
-        const itemsQuery = query(
-            collection(db, "supporters", supporterId, "menuItems"),
-            orderBy("displayOrder")
-        );
-        const unsubItems = onSnapshot(itemsQuery, (snapshot) => {
-            setMenuItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MenuItem)));
-            setLoading(false);
-        });
-        return () => {
-            unsubCategories();
-            unsubItems();
-        };
-    }, [supporterId]);
-
-    const groupedMenu = useMemo(() => {
-        return categories.map(category => ({
-            ...category,
-            items: menuItems.filter(item => item.categoryId === category.id)
-        }));
-    }, [menuItems, categories]);
-
-    if (loading) return <div>Loading menu...</div>;
-    if (!supporterId) return <div>Could not load supporter data.</div>;
-
-    return (
-        <div>
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold">Manage Menu Items</h2>
-                <button className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">
-                    + Add Item
-                </button>
-            </div>
-            <div className="space-y-6">
-                {groupedMenu.map(({ id, name, items }) => (
-                    <div key={id}>
-                        <h3 className="text-xl font-semibold mb-3 border-b pb-2">{name}</h3>
-                        {items.length > 0 ? (
-                            <div className="space-y-2">
-                                {items.map(item => (
-                                    <div key={item.id} className="bg-white p-4 rounded-lg shadow-sm flex justify-between items-center">
-                                        <p className="font-bold">{item.name}</p>
-                                        <div className="flex items-center gap-4">
-                                            <span className="font-semibold">${item.price.toFixed(2)}</span>
-                                            <button className="text-blue-600 hover:underline">Edit</button>
-                                            <button className="text-red-600 hover:underline">Delete</button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-gray-500 p-2">No items in this category yet.</p>
-                        )}
+                    <div className="flex items-center gap-4">
+                      <span className="font-semibold">${item.price.toFixed(2)}</span>
+                      <button
+                        onClick={() => handleOpenModal(item)}
+                        className="text-blue-600 hover:underline"
+                      >
+                        {t("edit")}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteItem(item.id)}
+                        className="text-red-600 hover:underline"
+                      >
+                        {t("delete")}
+                      </button>
                     </div>
+                  </div>
                 ))}
-                 {categories.length === 0 && <p className="text-gray-500 text-center p-4">Please create a category first before adding items.</p>}
+              </div>
             </div>
+          ))}
         </div>
-    );
-}
-
-
-// --- THE DEFAULT EXPORT (This is the valid page component) ---
-export default function MenuPage({ supporterId }: { supporterId: string | null }) {
-  // This is the actual page component Next.js renders.
-  // Its only job is to render the MenuEditor component and pass the prop down.
-  return <MenuEditor supporterId={supporterId} />;
+      )}
+      {isModalOpen && (
+        <MenuItemForm
+          item={currentItem}
+          onSave={handleSaveItem}
+          onClose={handleCloseModal}
+          t={t}
+        />
+      )}
+    </div>
+  );
 }
