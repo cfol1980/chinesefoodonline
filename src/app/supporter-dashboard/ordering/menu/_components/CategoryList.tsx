@@ -2,42 +2,51 @@
 
 import React, { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, query, orderBy, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, addDoc } from 'firebase/firestore';
+import { CategoryForm } from './CategoryForm';
 
-// Translations specific to this CategoryList component
 const translations = {
   en: {
     loading: "Loading categories...",
     addCategoryBtn: "+ Add New Category",
     editBtn: "Edit",
     deleteBtn: "Del",
+    formTitle: "Add New Category",
+    nameLabel: "Category Name",
+    descriptionLabel: "Description (Optional)",
+    saveBtn: "Save",
+    cancelBtn: "Cancel",
   },
   zh: {
     loading: "正在加载分类...",
     addCategoryBtn: "+ 添加新分类",
     editBtn: "编辑",
     deleteBtn: "删除",
+    formTitle: "添加新分类",
+    nameLabel: "分类名称",
+    descriptionLabel: "描述（可选）",
+    saveBtn: "保存",
+    cancelBtn: "取消",
   },
 };
 
-type Category = { id: string; name: string; description?: string };
-
+type Category = { id: string; name: string; description?: string; order: number };
 interface CategoryListProps {
-  supporterSlug: string;
-  selectedCategoryId: string | null;
-  setSelectedCategoryId: (id: string | null) => void;
-  lang: 'en' | 'zh'; // Receive the language code as a prop
+    supporterSlug: string;
+    selectedCategoryId: string | null;
+    setSelectedCategoryId: (id: string | null) => void;
+    lang: 'en' | 'zh';
 }
 
 export function CategoryList({ supporterSlug, selectedCategoryId, setSelectedCategoryId, lang }: CategoryListProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Translation helper function for this component, using the lang prop
-  const t = (key: keyof typeof translations['en']) => translations[lang][key] || key;
+  // CORRECTED LINE HERE
+  const t = (key: string) => translations[lang][key as keyof typeof translations['en']] || key;
 
   useEffect(() => {
-    // Data fetching logic remains the same
     const fetchCategories = async () => {
       if (!supporterSlug) return;
       setIsLoading(true);
@@ -56,15 +65,40 @@ export function CategoryList({ supporterSlug, selectedCategoryId, setSelectedCat
     fetchCategories();
   }, [supporterSlug]);
 
+  const handleSaveCategory = async (categoryData: { name: string; description: string }) => {
+    if (!supporterSlug) return;
+    try {
+      const newOrder = categories.length > 0 ? Math.max(...categories.map(c => c.order || 0)) + 1 : 0;
+
+      const categoriesRef = collection(db, 'supporters', supporterSlug, 'categories');
+      const docRef = await addDoc(categoriesRef, {
+        ...categoryData,
+        order: newOrder,
+      });
+
+      const newCategory: Category = { id: docRef.id, ...categoryData, order: newOrder };
+      setCategories([...categories, newCategory].sort((a, b) => a.order - b.order));
+      
+    } catch (error) {
+      console.error("Error adding category: ", error);
+    } finally {
+      setIsModalOpen(false);
+    }
+  };
+
   if (isLoading) {
     return <div className="text-center p-4">{t('loading')}</div>;
   }
 
   return (
     <div className="space-y-2">
-      <button className="w-full bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 mb-4">
+      <button
+        onClick={() => setIsModalOpen(true)}
+        className="w-full bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 mb-4"
+      >
         {t('addCategoryBtn')}
       </button>
+
       {categories.map((category) => (
         <div
           key={category.id}
@@ -80,6 +114,13 @@ export function CategoryList({ supporterSlug, selectedCategoryId, setSelectedCat
           </div>
         </div>
       ))}
+
+      <CategoryForm
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleSaveCategory}
+        t={t}
+      />
     </div>
   );
 }
