@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { db } from '../../../../../firebase/config'; // Adjust this path to your Firebase config file
+import { db } from '@/lib/firebase'; // Adjust this path to your Firebase config file
 import { collection, query, orderBy, getDocs } from 'firebase/firestore';
 
 // Define a type for our category data for better code safety
