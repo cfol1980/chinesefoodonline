@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { CategoryList } from './_components/CategoryList';
+import { MenuItemList } from './_components/MenuItemList';
 
 // Translations specific to this page component
 const translations = {
