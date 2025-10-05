@@ -1,0 +1,53 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to get the requesting user's data
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // --- Supporters Collection ---
+    match /supporters/{supporterId} {
+      allow read: if true;
+      allow create: if request.auth != null && getUserData().role == 'admin';
+      allow delete: if request.auth != null && getUserData().role == 'admin';
+
+      // CORRECTED: Use 'in' to check for ownership in the array.
+      allow update: if request.auth != null && (
+        supporterId in getUserData().ownedSupporterId || 
+        getUserData().role == 'admin'
+      );
+
+      // --- Subcollections (menu, orderingMenu, etc.) ---
+      // This single rule can handle all subcollections under a supporter.
+      match /{subcollection}/{docId} {
+        allow read: if true;
+        allow write: if request.auth != null && ( // create, update, delete
+          supporterId in getUserData().ownedSupporterId || 
+          getUserData().role == 'admin'
+        );
+      }
+    }
+
+    // --- Users Collection ---
+    match /users/{userId} {
+      allow get: if request.auth.uid == userId; // For Storage rules
+      allow read: if request.auth != null && (
+        request.auth.uid == userId || 
+        getUserData().role == 'admin'
+      );
+      allow create: if request.auth != null && request.auth.uid == userId;
+      
+      // A user can update their own doc but cannot change protected fields.
+      allow update: if request.auth != null && (
+        (
+          request.auth.uid == userId &&
+          request.resource.data.role == resource.data.role &&
+          request.resource.data.ownedSupporterId == resource.data.ownedSupporterId
+        ) ||
+        getUserData().role == 'admin'
+      );
+    }
+  }
+}
