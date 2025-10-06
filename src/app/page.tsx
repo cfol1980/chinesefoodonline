@@ -17,5 +17,5 @@ export default function Home() {
     test();
   }, []);
 
-  return <h1>welcome to chinese food online!</h1>;
+  return <h1>Welcome to chinese food online!</h1>;
 }
