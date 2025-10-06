@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 100, "column": 0}, "map": {"version":3,"sources":["file:///C:/3/chinesefoodonline/src/app/page.tsx"],"sourcesContent":["\"use client\";\n\nimport { useEffect } from \"react\";\nimport { db } from \"@/lib/firebase\";\nimport { collection, getDocs } from \"firebase/firestore\";\n\nexport default function Home() {\n  useEffect(() => {\n    const test = async () => {\n      try {\n        const snapshot = await getDocs(collection(db, \"supporters\"));\n        console.log(\"Supporters:\", snapshot.docs.map(d => d.data()));\n      } catch (err) {\n        console.error(\"Firestore error:\", err);\n      }\n    };\n    test();\n  }, []);\n\n  return <h1>Hello Firebase + Next.js!</h1>;\n}\n"],"names":[],"mappings":";;;;;AAEA;;;;;;AAEA;AAAA;AAJA;;;;;AAMe,SAAS;IACtB,IAAA,kNAAS,EAAC;QACR,MAAM,OAAO;YACX,IAAI;gBACF,MAAM,WAAW,MAAM,IAAA,4KAAO,EAAC,IAAA,+KAAU,EAAC,IAAI;gBAC9C,QAAQ,GAAG,CAAC,eAAe,SAAS,IAAI,CAAC,GAAG,CAAC,CAAA,IAAK,EAAE,IAAI;YAC1D,EAAE,OAAO,KAAK;gBACZ,QAAQ,KAAK,CAAC,oBAAoB;YACpC;QACF;QACA;IACF,GAAG,EAAE;IAEL,qBAAO,8OAAC;kBAAG;;;;;;AACb","debugId":null}}]
+}
