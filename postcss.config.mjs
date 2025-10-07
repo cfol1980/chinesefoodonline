@@ -1,7 +1,7 @@
-// postcss.config.mjs
-import tailwindcss from "@tailwindcss/postcss";
-import autoprefixer from "autoprefixer";
-
+// postcss.config.mjs  (Tailwind 3 syntax)
 export default {
-  plugins: [tailwindcss(), autoprefixer()],
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
 };
