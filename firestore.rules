@@ -1,53 +1,49 @@
+// firestore.rules
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to get the requesting user's data
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    // Get current user's /users/{uid} doc (may be null if not created yet).
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return isSignedIn() && userDoc().data.roles.admin == true;
+    }
+    function ownsSupporter(supporterId) {
+      return isSignedIn() &&
+             supporterId in userDoc().data.ownedSupporterIds;
     }
 
-    // --- Supporters Collection ---
+    // -------- SUPPORTERS --------
     match /supporters/{supporterId} {
+      // Public can read supporter profile & public menu
       allow read: if true;
-      allow create: if request.auth != null && getUserData().role == 'admin';
-      allow delete: if request.auth != null && getUserData().role == 'admin';
 
-      // CORRECTED: Use 'in' to check for ownership in the array.
-      allow update: if request.auth != null && (
-        supporterId in getUserData().ownedSupporterId || 
-        getUserData().role == 'admin'
-      );
+      // Admin or owner can modify supporter doc
+      allow create, update, delete: if isAdmin() || ownsSupporter(supporterId);
 
-      // --- Subcollections (menu, orderingMenu, etc.) ---
-      // This single rule can handle all subcollections under a supporter.
+      // All subcollections: categories, items, orders (if needed later), etc.
       match /{subcollection}/{docId} {
         allow read: if true;
-        allow write: if request.auth != null && ( // create, update, delete
-          supporterId in getUserData().ownedSupporterId || 
-          getUserData().role == 'admin'
-        );
+        allow write: if isAdmin() || ownsSupporter(supporterId);
       }
     }
 
-    // --- Users Collection ---
-    match /users/{userId} {
-      allow get: if request.auth.uid == userId; // For Storage rules
-      allow read: if request.auth != null && (
-        request.auth.uid == userId || 
-        getUserData().role == 'admin'
-      );
-      allow create: if request.auth != null && request.auth.uid == userId;
-      
-      // A user can update their own doc but cannot change protected fields.
-      allow update: if request.auth != null && (
-        (
-          request.auth.uid == userId &&
-          request.resource.data.role == resource.data.role &&
-          request.resource.data.ownedSupporterId == resource.data.ownedSupporterId
-        ) ||
-        getUserData().role == 'admin'
-      );
+    // -------- USERS --------
+    match /users/{uid} {
+      // Each user manages their own doc. Admin can read all.
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == uid);
+      allow create: if isSignedIn() && request.auth.uid == uid;
+      allow update, delete: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // (Optional) global indexes like /orders can be admin-only later
+    match /orders/{orderId} {
+      allow read, write: if isAdmin();
     }
   }
 }

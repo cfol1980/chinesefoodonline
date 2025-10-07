@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "chinesefoodonline"
+    "stage": "chinesefoodonline-stage",
+    "prod": "chinesefoodonline"
   }
 }

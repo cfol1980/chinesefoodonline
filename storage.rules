@@ -1,12 +1,28 @@
+// storage.rules
 rules_version = '2';
-
-// Craft rules based on data in your Firestore database
-// allow write: if firestore.get(
-//    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
 service firebase.storage {
   match /b/{bucket}/o {
-    match /{allPaths=**} {
-      allow read, write: if false;
+
+    function userDoc() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid));
+    }
+    function isSignedIn() { return request.auth != null && userDoc().data != null; }
+    function isAdmin() { return isSignedIn() && userDoc().data.roles.admin == true; }
+    function ownsSupporter(supporterId) {
+      return isSignedIn() && supporterId in userDoc().data.ownedSupporterIds;
+    }
+
+    // Supporter-managed media (logos, categories, items, receipts, etc.)
+    // e.g. supporters/enoodle/categories/abc.jpg
+    match /supporters/{supporterId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin() || ownsSupporter(supporterId);
+    }
+
+    // Global logos edited by admins only (optional; keep if you need a central pool)
+    match /logos/{fileName=**} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
   }
 }

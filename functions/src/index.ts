@@ -1,86 +1,60 @@
-import * as admin from "firebase-admin";
-import {
-  onCall,
-  HttpsError,
-  CallableRequest,
-} from "firebase-functions/v2/https";
+// functions/src/index.ts
+import admin from "firebase-admin";
+import { onRequest, onCall, HttpsError, CallableRequest } from "firebase-functions/v2/https";
+import * as functionsV1 from "firebase-functions/v1"; // 👈 import v1 for auth trigger
 import * as logger from "firebase-functions/logger";
 
-admin.initializeApp();
 
-// Types
+// ---------- Init ----------
+admin.initializeApp();
+const db = admin.firestore();
+
+// ---------- Types ----------
 type BaseRole = "admin" | "supporter" | "contributor" | "user";
 type SupporterSubRole = "owner" | "manager" | "employee";
+
+interface Assignment {
+  supporterId: string; // slug, lowercase
+  role: SupporterSubRole;
+}
 
 interface UpdateUserRolesPayload {
   uid: string;
   roles?: Partial<Record<BaseRole, boolean>>;
-  assignments?: Array<{ supporterId: string; role: SupporterSubRole }>;
-  replaceAssignments?: boolean;
+  assignments?: Assignment[];
+  replaceAssignments?: boolean; // if true, remove any memberships not listed
 }
 
-/**
- * Utility: update /users/{uid} snapshot for admin UI
- */
-async function upsertUserProfileRolesSnapshot(params: {
-  uid: string;
-  roles: Partial<Record<BaseRole, boolean>>;
-  assignments: Array<{ supporterId: string; role: SupporterSubRole }>;
-}) {
-  const { uid, roles, assignments } = params;
-  const db = admin.firestore();
+// ---------- Helpers ----------
+async function upsertUserDoc(uid: string, extra: Record<string, unknown> = {}) {
   const ref = db.collection("users").doc(uid);
-
-  const ownedSupporterIds = assignments
-    .filter((a) => a.role === "owner")
-    .map((a) => a.supporterId);
-
   const now = admin.firestore.FieldValue.serverTimestamp();
   await ref.set(
     {
       uid,
-      roles: {
-        admin: !!roles.admin,
-        supporter: !!roles.supporter || assignments.length > 0,
-        contributor: !!roles.contributor,
-        user: roles.user === undefined ? true : !!roles.user,
-      },
-      ownedSupporterIds,
+      // app-visible role mirrors (helpful for rules & admin UI)
+      roles: { user: true },
+      ownedSupporterIds: [], // slugs the user "owns"
+      createdAt: now,
       updatedAt: now,
+      ...extra,
     },
     { merge: true }
   );
 }
 
-/**
- * Utility: upsert membership /supporters/{id}/members/{uid}
- */
-async function upsertMembership(params: {
-  supporterId: string;
-  uid: string;
-  role: SupporterSubRole;
-}) {
-  const { supporterId, uid, role } = params;
-  const db = admin.firestore();
-  const ref = db
+async function upsertMembership(uid: string, supporterId: string, role: SupporterSubRole) {
+  const now = admin.firestore.FieldValue.serverTimestamp();
+  await db
     .collection("supporters")
     .doc(supporterId)
     .collection("members")
-    .doc(uid);
-
-  const now = admin.firestore.FieldValue.serverTimestamp();
-  await ref.set({ role, updatedAt: now, createdAt: now }, { merge: true });
+    .doc(uid)
+    .set({ role, updatedAt: now, createdAt: now }, { merge: true });
 }
 
-/**
- * Utility: remove memberships not listed
- */
-async function removeMissingMemberships(params: {
-  uid: string;
-  keepSupporterIds: string[];
-}) {
-  const { uid, keepSupporterIds } = params;
-  const db = admin.firestore();
+async function removeMissingMemberships(uid: string, keepSupporterIds: string[]) {
+  // Scan memberships via collectionGroup
   const cg = await db
     .collectionGroup("members")
     .where(admin.firestore.FieldPath.documentId(), "==", uid)
@@ -96,219 +70,188 @@ async function removeMissingMemberships(params: {
   await batch.commit();
 }
 
-/**
- * Assign role (legacy: admin/supporterOwner only)
- */
-export const assignRole = onCall(async (request: CallableRequest<any>) => {
-  const context = request.auth;
-  const data = request.data;
-
-  if (!context?.token?.admin) {
-    throw new HttpsError("permission-denied", "Only admins can assign roles");
+function normalizeRoles(roles?: Partial<Record<BaseRole, boolean>>) {
+  const r: Record<BaseRole, boolean> = {
+    admin: false,
+    supporter: false,
+    contributor: false,
+    user: true,
+  };
+  if (!roles) return r;
+  for (const k of Object.keys(roles)) {
+    const kk = k as BaseRole;
+    if (kk in r) r[kk] = !!roles[kk];
   }
+  // Always ensure user=true unless explicitly false
+  if (roles.user === false) r.user = false;
+  return r;
+}
 
-  const uid: string = data.uid;
-  const role: "admin" | "supporterOwner" = data.role;
-  if (!uid || !role) {
-    throw new HttpsError("invalid-argument", "Must provide uid and role");
-  }
-
-  const claims: Record<string, boolean> = {};
-  if (role === "admin") claims.admin = true;
-  if (role === "supporterOwner") claims.supporterOwner = true;
-
-  await admin.auth().setCustomUserClaims(uid, claims);
-  await upsertUserProfileRolesSnapshot({
-    uid,
-    roles: { admin: !!claims.admin, supporter: !!claims.supporterOwner },
-    assignments: [],
+function normalizeAssignments(assignments?: Assignment[]) {
+  const allowed: SupporterSubRole[] = ["owner", "manager", "employee"];
+  const clean = (assignments || []).map((a) => {
+    if (!a.supporterId || !allowed.includes(a.role)) {
+      throw new HttpsError("invalid-argument", "Invalid supporter assignment");
+    }
+    return { supporterId: a.supporterId.toLowerCase(), role: a.role as SupporterSubRole };
   });
+  return clean;
+}
 
-  return { message: `✅ Set ${role} role for user ${uid}` };
+// ---------- Triggers ----------
+// Seed a minimal user doc on first sign-in so rules relying on /users/{uid} work immediately.
+
+export const authOnCreate = functionsV1.auth.user().onCreate(async (user) => {
+  const { uid, email, phoneNumber, displayName } = user;
+  await upsertUserDoc(uid, {
+    email,
+    emailLower: (email || "").toLowerCase(),
+    phoneNumber: phoneNumber || null,
+    displayName: displayName || null,
+    displayNameLower: (displayName || "").toLowerCase(),
+  });
+  logger.info("Seeded user doc", { uid });
 });
 
-/**
- * Update user roles & memberships (secure)
- */
-export const updateUserRoles = onCall(
+// ---------- HTTPS Endpoints (optional ping) ----------
+export const ping = onRequest(
+  {
+    region: "us-east1",
+    cpu: 0.083,
+    memory: "256MiB",
+    minInstances: 0,
+  },
+  (_req, res) => {
+    res.status(200).send("CFOL API OK");
+  }
+);
+
+// ---------- Callable: updateUserRoles (Admin or Owner-limited) ----------
+export const updateUserRoles = onCall<UpdateUserRolesPayload>(
+  {
+    region: "us-east1",
+    cpu: 0.083,
+    memory: "256MiB",
+    minInstances: 0,
+  },
   async (request: CallableRequest<UpdateUserRolesPayload>) => {
     const auth = request.auth;
     if (!auth) throw new HttpsError("unauthenticated", "Must sign in");
 
-    const { uid, roles = {}, assignments = [], replaceAssignments } =
-      request.data || {};
+    const { uid, roles, assignments, replaceAssignments } = request.data || {};
     if (!uid) throw new HttpsError("invalid-argument", "uid required");
 
-    const requesterClaims = auth.token;
+    // Normalize inputs
+    const cleanRoles = normalizeRoles(roles);
+    const cleanAssignments = normalizeAssignments(assignments);
 
-    // --- Authorization ---
-    if (requesterClaims.admin) {
-      // full access
-    } else if (requesterClaims.supporterOwner) {
-      // Owners cannot assign global roles
-      if (roles.admin || roles.contributor) {
-        throw new HttpsError("permission-denied", "Owners can't assign global roles");
+    // Authorization
+    const requesterClaims = auth.token as any;
+    const requesterRoles = (requesterClaims.roles || {}) as Record<string, boolean>;
+    const requesterAssignments = (requesterClaims.supporterAssignments || []) as Assignment[];
+
+    const isAdmin = !!requesterRoles.admin;
+
+    if (!isAdmin) {
+      // Supporter owners can only assign within supporters they own; cannot grant admin/contributor
+      const ownerOwned = new Set(
+        requesterAssignments.filter((a) => a.role === "owner").map((a) => a.supporterId)
+      );
+      if (cleanRoles.admin || cleanRoles.contributor) {
+        throw new HttpsError("permission-denied", "Only admins can set global roles");
       }
-
-      // Must only assign within their owned supporters
-      const db = admin.firestore();
-      const ownedSnaps = await db
-        .collectionGroup("members")
-        .where(admin.firestore.FieldPath.documentId(), "==", auth.uid)
-        .get();
-
-      const ownedSupporters = ownedSnaps.docs
-        .filter((d) => d.data().role === "owner")
-        .map((d) => d.ref.parent.parent?.id);
-
-      for (const a of assignments) {
-        if (!ownedSupporters.includes(a.supporterId)) {
+      for (const a of cleanAssignments) {
+        if (!ownerOwned.has(a.supporterId)) {
           throw new HttpsError(
             "permission-denied",
-            "You can only assign roles in your supporters"
+            `Not an owner of supporter '${a.supporterId}'`
           );
         }
       }
-    } else {
-      throw new HttpsError("permission-denied", "Not authorized");
     }
 
-    // --- Validation ---
-    const allowedBase: BaseRole[] = ["admin", "supporter", "contributor", "user"];
-    const cleanRoles: Partial<Record<BaseRole, boolean>> = {};
-    for (const k of Object.keys(roles)) {
-      if (!allowedBase.includes(k as BaseRole)) {
-        throw new HttpsError("invalid-argument", `Unknown role '${k}'`);
-      }
-      cleanRoles[k as BaseRole] = !!roles[k as BaseRole];
-    }
-    if (cleanRoles.user === undefined) cleanRoles.user = true;
+    // Build final claims to set on target user
+    // - We always include roles + supporterAssignments for the client.
+    const finalClaims: Record<string, any> = {
+      roles: cleanRoles,
+      supporterAssignments: cleanAssignments,
+    };
+    // If any assignment exists, ensure supporter=true
+    if (cleanAssignments.length > 0) finalClaims.roles.supporter = true;
 
-    const allowedSub: SupporterSubRole[] = ["owner", "manager", "employee"];
-    const cleanAssignments = (assignments || []).map((a) => {
-      if (!a.supporterId || !allowedSub.includes(a.role)) {
-        throw new HttpsError("invalid-argument", "Invalid assignment");
-      }
-      return { supporterId: a.supporterId.toLowerCase(), role: a.role };
+    // Apply claims
+    await admin.auth().setCustomUserClaims(uid, finalClaims);
+
+    // Mirror roles to /users/{uid} for rules/admin UI
+    const ownedSupporterIds = cleanAssignments
+      .filter((a) => a.role === "owner")
+      .map((a) => a.supporterId);
+
+    await upsertUserDoc(uid, {
+      roles: cleanRoles,
+      ownedSupporterIds,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    // --- Build Claims ---
-    const claims: Record<string, boolean> = {
-      admin: !!cleanRoles.admin,
-      contributor: !!cleanRoles.contributor,
-    };
-    if (cleanAssignments.length > 0 || cleanRoles.supporter) claims.supporter = true;
-    if (cleanAssignments.some((a) => a.role === "owner")) claims.supporterOwner = true;
-
-    // --- Apply ---
-    await admin.auth().setCustomUserClaims(uid, claims);
+    // Mirror membership docs under supporters
     for (const a of cleanAssignments) {
-      await upsertMembership({ supporterId: a.supporterId, uid, role: a.role });
+      await upsertMembership(uid, a.supporterId, a.role);
     }
-    if (replaceAssignments) {
-      await removeMissingMemberships({
-        uid,
-        keepSupporterIds: cleanAssignments.map((a) => a.supporterId),
-      });
-    }
-    await upsertUserProfileRolesSnapshot({ uid, roles: cleanRoles, assignments: cleanAssignments });
 
-    logger.info("Updated roles", { uid, claims, roles: cleanRoles, assignments: cleanAssignments });
-    return { message: `✅ Updated roles for ${uid}`, claims, roles: cleanRoles, assignments: cleanAssignments };
+    if (replaceAssignments) {
+      await removeMissingMemberships(uid, cleanAssignments.map((a) => a.supporterId));
+    }
+
+    logger.info("Updated user claims", { targetUid: uid, finalClaims });
+    return { message: `✅ Updated roles for ${uid}`, claims: finalClaims };
   }
 );
 
-/**
- * Search users (partial match, admin only)
- */
-export const searchUsers = onCall(async (request: CallableRequest<any>) => {
-  const context = request.auth;
-  if (!context?.token?.admin) {
-    throw new HttpsError("permission-denied", "Admins only");
+// ---------- Callable: searchUsers (Admin only, basic; keep cheap) ----------
+export const searchUsers = onCall<{ query: string }>(
+  {
+    region: "us-east1",
+    cpu: 0.083,
+    memory: "256MiB",
+    minInstances: 0,
+  },
+  async (request) => {
+    const auth = request.auth;
+    if (!auth) throw new HttpsError("unauthenticated", "Must sign in");
+    const roles = ((auth.token as any).roles || {}) as Record<string, boolean>;
+    if (!roles.admin) throw new HttpsError("permission-denied", "Admins only");
+
+    const q = (request.data?.query || "").trim().toLowerCase();
+    if (!q || q.length < 2) throw new HttpsError("invalid-argument", "Min 2 chars");
+
+    const results: any[] = [];
+    const byEmail = await db
+      .collection("users")
+      .where("emailLower", ">=", q)
+      .where("emailLower", "<=", q + "\uf8ff")
+      .limit(10)
+      .get();
+    byEmail.forEach((d) => results.push(d.data()));
+
+    const byName = await db
+      .collection("users")
+      .where("displayNameLower", ">=", q)
+      .where("displayNameLower", "<=", q + "\uf8ff")
+      .limit(10)
+      .get();
+    byName.forEach((d) => results.push(d.data()));
+
+    const byPhone = await db.collection("users").where("phoneNumber", "==", q).get();
+    byPhone.forEach((d) => results.push(d.data()));
+
+    // dedupe by uid
+    const unique = Object.values(
+      results.reduce((acc, u: any) => {
+        if (u?.uid) acc[u.uid] = u;
+        return acc;
+      }, {} as Record<string, any>)
+    );
+
+    return unique;
   }
-
-  const query: string = (request.data.query || "").trim().toLowerCase();
-  if (!query || query.length < 2) {
-    throw new HttpsError("invalid-argument", "Min 2 characters");
-  }
-
-  const db = admin.firestore();
-  const results: any[] = [];
-
-  // emailLower prefix
-  const emailSnap = await db
-    .collection("users")
-    .where("emailLower", ">=", query)
-    .where("emailLower", "<=", query + "\uf8ff")
-    .limit(10)
-    .get();
-  emailSnap.forEach((d) => results.push(d.data()));
-
-  // displayNameLower prefix
-  const nameSnap = await db
-    .collection("users")
-    .where("displayNameLower", ">=", query)
-    .where("displayNameLower", "<=", query + "\uf8ff")
-    .limit(10)
-    .get();
-  nameSnap.forEach((d) => results.push(d.data()));
-
-  // phoneNumber exact
-  const phoneSnap = await db.collection("users").where("phoneNumber", "==", query).get();
-  phoneSnap.forEach((d) => results.push(d.data()));
-
-  // supporter ownership
-  const supporterSnap = await db
-    .collection("users")
-    .where("ownedSupporterIds", "array-contains", query)
-    .get();
-  supporterSnap.forEach((d) => results.push(d.data()));
-
-  // dedupe by uid
-  const unique = Object.values(
-    results.reduce((acc, u: any) => {
-      acc[u.uid] = u;
-      return acc;
-    }, {} as Record<string, any>)
-  );
-
-  return unique;
-});
-
-/**
- * Get supporter owner (admin only)
- */
-export const getSupporterOwner = onCall(async (request: CallableRequest<any>) => {
-  const context = request.auth;
-  if (!context?.token?.admin) {
-    throw new HttpsError("permission-denied", "Admins only");
-  }
-
-  const supporterId: string = (request.data.supporterId || "").trim().toLowerCase();
-  if (!supporterId) throw new HttpsError("invalid-argument", "Supporter ID is required");
-
-  const snap = await admin.firestore().collection("supporters").doc(supporterId).get();
-  if (!snap.exists) throw new HttpsError("not-found", `Supporter '${supporterId}' not found`);
-
-  const data = snap.data()!;
-  const ownerUserId: string | undefined = data.ownerUserId;
-
-  if (!ownerUserId) return { supporterId, ownerUserId: null, owner: null };
-
-  try {
-    const owner = await admin.auth().getUser(ownerUserId);
-    return {
-      supporterId,
-      ownerUserId,
-      owner: {
-        uid: owner.uid,
-        email: owner.email,
-        phoneNumber: owner.phoneNumber,
-        displayName: owner.displayName,
-        customClaims: owner.customClaims,
-      },
-    };
-  } catch (err: any) {
-    throw new HttpsError("not-found", "Owner user not found: " + err.message);
-  }
-});
+);

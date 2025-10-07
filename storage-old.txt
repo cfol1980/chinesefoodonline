@@ -1,0 +1,64 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper functions
+    function userDoc() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid));
+    }
+
+    function isSignedIn() {
+      return request.auth != null && userDoc().data != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && userDoc().data.role == "admin";
+    }
+
+    function isOwner(supporterSlug) {
+      return isSignedIn() &&
+        ('ownedSupporterId' in userDoc().data &&
+         supporterSlug in userDoc().data.ownedSupporterId);
+    }
+
+    // --- Supporter-specific folders (owner OR admin) ---
+    // Each folder needs its own match block.
+
+    match /menu/{supporterSlug}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin() || isOwner(supporterSlug);
+    }
+
+    match /orderingMenu/{supporterSlug}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin() || isOwner(supporterSlug);
+    }
+
+    match /promotion/{supporterSlug}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin() || isOwner(supporterSlug);
+    }
+
+    match /storepictures/{supporterSlug}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin() || isOwner(supporterSlug);
+    }
+
+    match /qrimages/{supporterSlug}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin() || isOwner(supporterSlug);
+    }
+
+    match /recommendations/{supporterSlug}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin() || isOwner(supporterSlug);
+    }
+
+    // --- Logos (admins only) ---
+    match /logos/{fileName=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}
