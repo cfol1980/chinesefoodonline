@@ -36,17 +36,19 @@ export default function SupporterDashboardLayout({
           href={`/supporter/${supporter?.id ?? ""}`}
           className="flex items-center gap-2 font-semibold text-gray-900 hover:text-primary"
         >
-          {supporter?.logoUrl ? (
-            <img
-              src={supporter.logoUrl}
-              alt={supporter.name?.[lang] ?? "logo"}
-              className="h-8 w-8 rounded-full object-cover"
-            />
-          ) : (
-            <span className="text-base">
-              {supporter?.name?.[lang] ?? "Supporter"}
-            </span>
-          )}
+          {supporter?.logo ? (
+  <img
+    src={supporter.logo}
+    alt={supporter.name?.[lang] ?? "logo"}
+    className="h-8 w-8 rounded-full object-cover"
+  />
+) : (
+  <span className="text-base font-semibold">
+    {typeof supporter?.name === "string"
+      ? supporter.name
+      : supporter?.name?.[lang] ?? "Supporter"}
+  </span>
+)}
         </Link>
 
         {/* desktop nav */}

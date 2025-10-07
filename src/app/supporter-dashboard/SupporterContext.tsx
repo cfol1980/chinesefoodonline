@@ -7,6 +7,8 @@ import { onAuthStateChanged } from "firebase/auth";
 interface Supporter {
   id: string;
   name?: any;
+  logo?: string;
+  logoPath?: string;
   settings?: any;
 }
 
