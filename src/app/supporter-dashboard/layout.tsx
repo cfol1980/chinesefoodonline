@@ -3,15 +3,20 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Languages } from "lucide-react";
+import { Menu, X, Languages } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useSupporter } from "./SupporterContext";
 
 export default function SupporterDashboardLayout({
   children,
-}: { children: React.ReactNode }) {
+}: {
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
   const [lang, setLang] = useState<"en" | "zh">("en");
+  const [open, setOpen] = useState(false);
+  const supporter = useSupporter();
 
   const nav = [
     { href: "/supporter-dashboard", label: { en: "Today", zh: "今日" } },
@@ -23,17 +28,36 @@ export default function SupporterDashboardLayout({
   ];
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
-      {/* top nav */}
-      <header className="w-full flex items-center justify-between border-b bg-gray-50 px-3 py-2">
-        <nav className="flex flex-wrap items-center gap-2 text-sm font-medium">
+    <div className="min-h-screen flex flex-col bg-white text-gray-900">
+      {/* header */}
+      <header className="sticky top-0 z-20 flex items-center justify-between border-b bg-white/95 backdrop-blur px-3 py-2 shadow-sm">
+        {/* left logo/name */}
+        <Link
+          href={`/supporter/${supporter?.id ?? ""}`}
+          className="flex items-center gap-2 font-semibold text-gray-900 hover:text-primary"
+        >
+          {supporter?.logoUrl ? (
+            <img
+              src={supporter.logoUrl}
+              alt={supporter.name?.[lang] ?? "logo"}
+              className="h-8 w-8 rounded-full object-cover"
+            />
+          ) : (
+            <span className="text-base">
+              {supporter?.name?.[lang] ?? "Supporter"}
+            </span>
+          )}
+        </Link>
+
+        {/* desktop nav */}
+        <nav className="hidden md:flex items-center gap-3 text-sm font-medium">
           {nav.map((n) => (
             <Link
               key={n.href}
               href={n.href}
               className={cn(
-                "px-2 py-1 rounded-md hover:bg-gray-100 whitespace-nowrap",
-                pathname === n.href && "bg-gray-200 font-semibold"
+                "px-2 py-1 rounded-md hover:bg-gray-100",
+                pathname === n.href && "bg-gray-200 font-semibold text-primary"
               )}
             >
               {n.label[lang]}
@@ -41,18 +65,49 @@ export default function SupporterDashboardLayout({
           ))}
         </nav>
 
+        {/* right controls */}
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setLang(lang === "en" ? "zh" : "en")}
-            className="flex items-center gap-1"
+            className="flex items-center gap-1 text-gray-800"
           >
             <Languages className="h-4 w-4" />
             {lang === "en" ? "中文" : "EN"}
           </Button>
+
+          {/* mobile menu toggle */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setOpen(!open)}
+            className="md:hidden"
+            aria-label="Toggle navigation"
+          >
+            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
         </div>
       </header>
+
+      {/* mobile dropdown nav */}
+      {open && (
+        <nav className="md:hidden bg-white border-b text-sm font-medium">
+          {nav.map((n) => (
+            <Link
+              key={n.href}
+              href={n.href}
+              onClick={() => setOpen(false)}
+              className={cn(
+                "block px-4 py-2 border-t hover:bg-gray-50",
+                pathname === n.href && "bg-gray-100 font-semibold text-primary"
+              )}
+            >
+              {n.label[lang]}
+            </Link>
+          ))}
+        </nav>
+      )}
 
       {/* main content */}
       <main className="flex-1 overflow-y-auto p-3">{children}</main>
