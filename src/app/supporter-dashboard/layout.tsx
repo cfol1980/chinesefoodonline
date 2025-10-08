@@ -1,6 +1,7 @@
 import React from "react";
 import type { Metadata, Viewport } from "next";
 import SupporterDashboardClient from "./SupporterDashboardClient";
+import AuthGuard from "@/components/AuthGuard";
 
 // Server component: exports metadata and viewport. Client UI lives in SupporterDashboardClient.
 export const metadata: Metadata = {
@@ -21,5 +22,9 @@ export default function SupporterDashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <SupporterDashboardClient>{children}</SupporterDashboardClient>;
+  return (
+    <AuthGuard>
+      <SupporterDashboardClient>{children}</SupporterDashboardClient>
+    </AuthGuard>
+  );
 }
