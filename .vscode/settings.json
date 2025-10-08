@@ -1,0 +1,11 @@
+{
+  // Use the workspace's stylelint and enable validation for CSS/PostCSS/SCSS files
+  "stylelint.enable": true,
+  "stylelint.validate": ["css", "postcss", "scss"],
+  // Point the extension to the project's node_modules so it uses the local binary
+  "stylelint.nodePath": "${workspaceFolder}/node_modules",
+
+  // Optional: disable the built-in CSS validator which can conflict with stylelint
+  // If you prefer built-in validation, remove or set this to true.
+  "css.validate": false
+}
